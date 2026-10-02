@@ -1,0 +1,1415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BF5 Tier List</title>
+<meta name="description" content="Tier lists for Battlefield V: any platoon's players, plus every weapon, vehicle and map.">
+<style>
+  :root {
+    --bg: #111214;
+    --panel: #1b1c1f;
+    --panel-2: #232428;
+    --line: #2e3035;
+    --text: #e8e8ea;
+    --muted: #8b8d93;
+    --gold: #f5c518;
+    --danger: #e5484d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 16px 0; border-bottom: 1px solid var(--line); background: var(--panel);
+    position: sticky; top: 0; z-index: 5;
+  }
+  header img { width: 40px; height: 40px; border-radius: 6px; }
+  header h1 { margin: 0; font-size: 18px; }
+  header h1 span { color: var(--gold); }
+  #status { color: var(--muted); font-size: 12px; }
+  .spacer { flex: 1; }
+  button, .btn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 7px 11px; font: inherit; cursor: pointer; white-space: nowrap;
+  }
+  button:hover, .btn:hover { border-color: #4a4d55; }
+  button.primary { background: var(--gold); color: #111; border-color: var(--gold); font-weight: 600; }
+  button.danger:hover { border-color: var(--danger); color: var(--danger); }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+  nav.tabs { flex-basis: 100%; display: flex; gap: 2px; margin-top: 4px; }
+  nav.tabs button {
+    border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none;
+    padding: 10px 16px; color: var(--muted); font-weight: 600;
+  }
+  nav.tabs button:hover { color: var(--text); }
+  nav.tabs button.active { color: var(--text); border-bottom-color: var(--gold); }
+  nav.tabs .count { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: 4px; }
+  .players-only { }
+  body:not([data-tab="players"]) .players-only { display: none !important; }
+  body:not([data-tab="weapons"]):not([data-tab="vehicles"]) .typed-only { display: none !important; }
+
+  #board { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #000; }
+  .tier { display: flex; min-height: 92px; border-bottom: 1px solid #000; }
+  .tier:last-child { border-bottom: 0; }
+  .label {
+    width: 100px; flex: 0 0 100px; display: flex; align-items: center; justify-content: center;
+    color: #111; font-weight: 700; font-size: 20px; text-align: center; padding: 6px;
+    word-break: break-word; outline: none;
+  }
+  .label[contenteditable="true"]:focus { box-shadow: inset 0 0 0 2px #fff; }
+  .label.long { font-size: 13px; font-weight: 600; }
+  #addTierBottom { width: 100%; margin-top: 6px; border-style: dashed; color: var(--muted); }
+  #addTierBottom:hover { color: var(--text); }
+  .drop {
+    flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; padding: 4px;
+    background: var(--panel); min-height: 92px;
+  }
+  .tier-tools { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 4px; background: var(--panel-2); }
+  .tier-tools button { padding: 2px 7px; font-size: 12px; }
+  .tier-tools input[type=color] { width: 26px; height: 22px; border: 0; padding: 0; background: none; cursor: pointer; }
+  .grip {
+    font-size: 20px; line-height: 1; text-align: center; color: var(--muted);
+    cursor: grab; touch-action: none; user-select: none; padding: 2px 0;
+  }
+  .grip:hover { color: var(--text); }
+  .label { cursor: grab; }
+  .label:focus { cursor: text; }
+  .tier-placeholder { opacity: .3; }
+  .tier-ghost {
+    position: fixed; z-index: 100; pointer-events: none; opacity: .92;
+    box-shadow: 0 10px 30px rgba(0,0,0,.7); outline: 2px solid var(--gold);
+  }
+  body.tier-dragging, body.tier-dragging * { user-select: none !important; cursor: grabbing !important; }
+
+  .card {
+    width: 84px; height: 84px; position: relative; border-radius: 4px; overflow: hidden;
+    background: #2a2c31; cursor: grab; user-select: none; touch-action: none; flex: 0 0 auto;
+  }
+  .card img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  /* Weapon renders are wide, transparent PNGs; maps are 16:9 screenshots. */
+  .card.weapon { width: 132px; background: linear-gradient(#34373d, #24262a); }
+  .card.weapon img { object-fit: contain; padding: 6px 6px 18px; }
+  .card.map { width: 150px; }
+  .card .initials {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 700; color: #fff;
+  }
+  .card .name {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 3px;
+    background: rgba(0,0,0,.72); color: #fff; font-size: 11px; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card .role {
+    position: absolute; top: 2px; left: 2px; font-size: 9px; padding: 0 4px; border-radius: 3px;
+    background: rgba(0,0,0,.65); color: var(--gold);
+  }
+  .card.extra .role { color: #9ad; }
+  .card.weapon .role { color: #cfd3da; }
+  .card .note-dot {
+    position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--gold); color: #111; font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  #noteDlg {
+    background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; width: min(440px, calc(100vw - 32px));
+  }
+  #noteDlg::backdrop { background: rgba(0,0,0,.6); }
+  #noteDlg h3 { margin: 0 0 4px; font-size: 16px; }
+  #noteDlg textarea {
+    width: 100%; min-height: 140px; margin: 10px 0; resize: vertical;
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px; font: inherit;
+  }
+  #noteDlg .row { display: flex; gap: 8px; justify-content: flex-end; }
+
+  .platoon-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+    padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  }
+  #barCurrent { display: flex; align-items: center; gap: 10px; }
+  #barCurrent img { width: 40px; height: 40px; border-radius: 6px; background: var(--panel-2); }
+  body.no-platoon #barCurrent { display: none; }
+  #barName { font-weight: 600; }
+  #barName .tag { color: var(--gold); }
+  #recent { display: flex; gap: 6px; flex-wrap: wrap; flex-basis: 100%; }
+  #recent:empty { display: none; }
+  #recent .chip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 9px; font-size: 12px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2);
+  }
+  #recent .chip button { border: 0; background: none; padding: 0 4px; color: var(--muted); }
+  #recent .chip button:hover { color: var(--text); }
+  #recent .chip .open { color: var(--text); padding: 0; }
+
+  #platoonSearch { display: flex; gap: 6px; flex: 1 1 320px; min-width: 0; }
+  #platoonQuery {
+    flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 6px; padding: 9px 12px; font: inherit;
+  }
+  #platoonQuery:focus { outline: none; border-color: var(--gold); }
+  #platoonResults {
+    margin: -6px 0 12px; max-height: 60vh; overflow: auto; display: flex; flex-direction: column; gap: 4px;
+    padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  }
+  #platoonResults:empty { display: none; }
+  #platoonResults > .muted { padding: 4px 2px; }
+  .empty-state {
+    text-align: center; padding: 48px 16px; color: var(--muted);
+    border: 1px dashed var(--line); border-radius: 8px;
+  }
+  .empty-state strong { display: block; color: var(--text); font-size: 16px; margin-bottom: 4px; }
+  body:not(.no-platoon) .empty-state, body:not([data-tab="players"]) .empty-state { display: none; }
+  body.no-platoon[data-tab="players"] .board-area { display: none; }
+  #platoonResults button {
+    display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
+    background: var(--panel-2); padding: 6px 10px;
+  }
+  #platoonResults img { width: 32px; height: 32px; border-radius: 4px; flex: 0 0 32px; background: #000; }
+  #platoonResults .tag { color: var(--gold); font-weight: 600; }
+  .card.placeholder { opacity: .25; outline: 2px dashed var(--gold); }
+  .card.dragging { position: fixed; z-index: 100; pointer-events: none; cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,.6); transform: scale(1.05); }
+  .card.hidden-by-filter { display: none; }
+
+  .pool-wrap { margin-top: 18px; }
+  .pool-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .pool-head h2 { margin: 0; font-size: 15px; }
+  .pool-head input[type=search], .add input, .pool-head select {
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 6px; padding: 7px 10px; font: inherit; min-width: 0;
+  }
+  #pool { border: 1px dashed var(--line); border-radius: 8px; min-height: 100px; }
+  .add { display: flex; gap: 6px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  footer { margin-top: 24px; color: var(--muted); font-size: 12px; }
+  footer a { color: inherit; }
+
+  #ctx {
+    position: fixed; z-index: 200; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px; display: none; min-width: 160px; box-shadow: 0 6px 20px rgba(0,0,0,.5);
+  }
+  #ctx button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 6px 10px; }
+  #ctx button:hover { background: var(--line); }
+
+  @media (max-width: 600px) {
+    .label { width: 64px; flex-basis: 64px; font-size: 15px; }
+    .card { width: 64px; height: 64px; }
+    .card.weapon { width: 100px; }
+    .card.map { width: 112px; }
+    .card .name { font-size: 9px; }
+    .tier, .drop { min-height: 72px; }
+    .tier-tools { padding: 2px; }
+    .tier-tools input[type=color] { width: 20px; }
+    nav.tabs button { padding: 10px 10px; }
+  }
+</style>
+</head>
+<body data-tab="players">
+<header>
+  <img alt="" src="https://eaassets-a.akamaihd.net/battlelog/bf-emblems/prod_default/exclusive/256/Default_V.png">
+  <div>
+    <h1><span>BF5</span> Tier List</h1>
+    <div id="status">Loading…</div>
+  </div>
+  <div class="spacer"></div>
+  <button id="refresh" class="players-only board-area" title="Fetch the roster again from gametools">↻ Refresh roster</button>
+  <button id="addTier" class="board-area">+ Tier</button>
+  <button id="png" class="primary board-area">Save image</button>
+  <button id="reset" class="danger board-area" title="Send everything on this tab back to Unranked">Reset</button>
+  <nav class="tabs" id="tabs">
+    <button data-tab="players">Players<span class="count"></span></button>
+    <button data-tab="weapons">Weapons<span class="count"></span></button>
+    <button data-tab="vehicles">Vehicles<span class="count"></span></button>
+    <button data-tab="maps">Maps<span class="count"></span></button>
+  </nav>
+</header>
+
+<main>
+  <div class="platoon-bar players-only">
+    <div id="barCurrent">
+      <img id="barEmblem" alt="">
+      <div>
+        <div class="muted">Platoon</div>
+        <div id="barName"></div>
+      </div>
+    </div>
+    <form id="platoonSearch">
+      <input id="platoonQuery" type="search" placeholder="Search any BF5 platoon by name or tag, or paste its ID / gametools link" autocomplete="off">
+      <button type="submit" class="primary">Search</button>
+    </form>
+    <div id="recent"></div>
+  </div>
+  <div id="platoonResults" class="players-only"></div>
+  <div class="empty-state">
+    <strong>Pick a platoon to rank its players</strong>
+    Search for it above. Results are sorted by member count, biggest first.
+  </div>
+
+  <div id="board" class="board-area"></div>
+  <button id="addTierBottom" type="button" class="board-area">+ Add tier</button>
+
+  <section class="pool-wrap board-area">
+    <div class="pool-head">
+      <h2>Unranked <span id="poolCount" class="muted"></span></h2>
+      <input id="filter" type="search" placeholder="Filter…">
+      <select id="typeFilter" class="typed-only" title="Which types to show in Unranked"></select>
+      <div class="spacer"></div>
+      <form class="add players-only" id="addForm">
+        <input id="addName" placeholder="Add player by EA name" autocomplete="off">
+        <button type="submit">Add</button>
+      </form>
+    </div>
+    <div id="pool" class="drop"></div>
+    <p class="muted">Drag cards between tiers (works with touch too). Double-click a card to add a note (hover to read it). Right-click / long-press a card for more options. Click a tier name to rename it; drag the name (or ⠿) to move the whole tier. Each tab has its own tiers, and everything saves automatically in this browser.</p>
+  </section>
+
+  <footer>Player, platoon and server data from <a href="https://gametools.network" target="_blank" rel="noopener">gametools.network</a>. Its roster endpoint often lists only part of a platoon, so members it leaves out are found by scanning live servers for the platoon's tag while the page is open (each find is checked against the player's profile, since tags aren't unique). Anyone still missing can be added by name. Your tier lists are stored only in this browser. Not affiliated with EA or DICE.</footer>
+</main>
+
+<div id="ctx"></div>
+
+<dialog id="noteDlg">
+  <form method="dialog">
+    <h3 id="noteTitle">Note</h3>
+    <div class="muted">Why it's in this tier, or anything else worth remembering.</div>
+    <textarea id="noteText"></textarea>
+    <div class="row">
+      <button type="button" id="noteClear" class="danger">Delete note</button>
+      <div class="spacer"></div>
+      <button type="button" id="noteCancel">Cancel</button>
+      <button type="submit" class="primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="catalog.js"></script>
+<script>
+"use strict";
+
+const $ = (s) => document.querySelector(s);
+const setStatus = (t) => { $("#status").textContent = t; };
+
+const API = "https://api.gametools.network";
+/** ouLuminescence, whose roster endpoint is missing members we know about (see OUL_KNOWN_EXTRA). */
+const OUL_ID = "c46223f9-6b15-4977-9533-f74717125873";
+const STORE_KEY = "bfv-tierlist";
+const PLAYER_TTL = 24 * 60 * 60 * 1000;
+
+const SCAN_INTERVAL = 15 * 60 * 1000;
+
+/**
+ * oul members the roster endpoint leaves out. It only returns part of the platoon (54 of 67 when
+ * this was written) and there's no other source for the full list, so known extras live here and
+ * the server scan / "Add player" find the rest. All were confirmed in oul via their /bfv/all profile.
+ */
+const OUL_KNOWN_EXTRA = [
+  { id: "1009383862001", name: "Bonsad" },
+  { id: "1010338674560", name: "v1eh" },
+  { id: "1005865577818", name: "Ser1ousM0use" },
+  { id: "812435485", name: "GtafanWRLD" },
+  { id: "1004410206099", name: "TrevGaming" },
+];
+
+const TABS = {
+  players: { noun: "players", filter: "Filter players…", note: "e.g. cracked on Panzerstorm, always plays medic" },
+  weapons: { noun: "weapons", filter: "Filter weapons…", note: "e.g. lasers at range, best with the 2.0x scope" },
+  vehicles: { noun: "vehicles", filter: "Filter vehicles…", note: "e.g. melts infantry, but paper-thin from the back" },
+  maps: { noun: "maps", filter: "Filter maps…", note: "e.g. great on Breakthrough, awful flags on Conquest" },
+};
+
+/** Tabs whose cards come from catalog.js rather than a platoon. */
+const CATALOG_TABS = ["weapons", "vehicles", "maps"];
+
+/** Weapon types that aren't guns; the Weapons tab hides them unless picked in the dropdown. */
+const NON_GUNS = ["Gadget", "Melee"];
+
+const UNKNOWN_LABEL = "Unknown / haven't seen playing";
+const BASE_TIERS = [["S", "#ff7f7f"], ["A", "#ffbf7f"], ["B", "#ffdf7f"], ["C", "#ffff7f"], ["D", "#bfff7f"], ["F", "#7fbfff"]];
+
+const uid = () => Math.random().toString(36).slice(2, 9);
+const freshBoard = (tab) => ({
+  tiers: [...BASE_TIERS, ...(tab === "players" ? [[UNKNOWN_LABEL, "#9a9ca3"]] : [])]
+    .map(([label, color]) => ({ id: uid(), label, color, items: [] })),
+  pool: [],
+});
+const freshPlatoon = (id, info = {}) => ({
+  id, tag: "", name: "", emblem: null, size: 0, listed: 0, fetchedAt: 0, lastScan: 0,
+  /** playerId → { role, member, extra, manual }: how each player relates to this platoon. */
+  roster: {},
+  ...info,
+});
+const freshState = () => ({
+  tab: "players",
+  /** Weapons and maps; each platoon's player board lives in playerBoards. */
+  boards: Object.fromEntries(CATALOG_TABS.map((tab) => [tab, freshBoard(tab)])),
+  /** The open platoon on the Players tab; null until one is picked. */
+  platoonId: null,
+  platoons: {},
+  /** platoonId → { tiers, pool } */
+  playerBoards: {},
+  /** id → { name, avatar, note, checkedAt }, shared by every platoon. */
+  players: {},
+  /** Weapons and maps by name → { name, image, type?, note? } */
+  items: Object.fromEntries(CATALOG_TABS.map((tab) => [tab, {}])),
+  /**
+   * Platoon tags seen on live servers → { ids: a few players wearing it, count, lastSeen,
+   * platoons?: what those players' profiles say the tag belongs to, resolvedAt }. Lets platoon
+   * search find active platoons by tag, which EA's name search often can't.
+   */
+  tagIndex: {},
+  lastTagScan: 0,
+  /** The type dropdown's choice per tab ("guns" = weapons without gadgets/melee). */
+  typeFilter: { weapons: "guns", vehicles: "all" },
+});
+
+/** Fills in anything a saved state is missing (e.g. a tab added after it was saved). */
+function normalize(s) {
+  if (!s || typeof s !== "object" || !s.boards || !s.players) return null;
+  const fresh = freshState();
+  for (const tab of CATALOG_TABS) s.boards[tab] ||= fresh.boards[tab];
+  s.items = { ...fresh.items, ...(s.items || {}) };
+  s.typeFilter = { ...fresh.typeFilter, ...(s.typeFilter || {}) };
+  s.platoons ||= {};
+  s.playerBoards ||= {};
+  if (!s.platoons[s.platoonId]) s.platoonId = null;
+  return { ...fresh, ...s };
+}
+
+// ---------- persistence ----------
+
+/**
+ * Everything is saved in this browser's localStorage. It stays until the site data is cleared, but
+ * it's per browser and per device.
+ */
+let state = load();
+
+function load() {
+  try {
+    const s = normalize(JSON.parse(localStorage.getItem(STORE_KEY)));
+    if (s) return s;
+  } catch {}
+  return freshState();
+}
+
+let saveTimer = null;
+
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flush, 300);
+}
+
+function flush() {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  } catch (e) {
+    setStatus(`Couldn't save in this browser (${e.message}). Private windows and blocked site data stop saving.`);
+  }
+}
+
+// A change made right before closing the tab would otherwise miss the 300 ms save delay.
+window.addEventListener("beforeunload", () => { if (saveTimer) flush(); });
+
+// ---------- tabs ----------
+
+/** The open platoon, or another one by id. */
+const platoon = (pid = state.platoonId) => state.platoons[pid];
+/** How a player relates to a platoon (rank, member or not, found by scan or added by hand). */
+const rosterOf = (id, pid = state.platoonId) => platoon(pid)?.roster[id] || {};
+/** The board (tiers + Unranked) of a tab. Players have one board per platoon. */
+function board(tab = state.tab, pid = state.platoonId) {
+  if (tab !== "players") return state.boards[tab];
+  // No platoon picked yet: an empty board that isn't saved anywhere.
+  if (!pid) return { tiers: [], pool: [] };
+  return (state.playerBoards[pid] ||= freshBoard("players"));
+}
+/** What a card id on the open tab refers to: a player, weapon or map. */
+const entity = (id, tab = state.tab) => (tab === "players" ? state.players : state.items[tab])[id];
+const placedOn = (tab, pid) => new Set([...board(tab, pid).pool, ...board(tab, pid).tiers.flatMap((t) => t.items)]);
+
+function switchTab(tab) {
+  if (!TABS[tab] || tab === state.tab && document.body.dataset.tab === tab) return;
+  state.tab = tab;
+  save();
+  $("#filter").value = "";
+  render();
+  showTabStatus();
+}
+
+$("#tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-tab]");
+  if (b) switchTab(b.dataset.tab);
+});
+
+function showTabStatus() {
+  if (state.tab === "players") return showCount();
+  const all = Object.keys(state.items[state.tab]).length;
+  const ranked = board().tiers.reduce((n, t) => n + t.items.length, 0);
+  setStatus(all ? `${ranked} of ${all} ${TABS[state.tab].noun} ranked` : `Couldn't load the ${TABS[state.tab].noun} list (catalog.js is missing next to index.html).`);
+}
+
+// ---------- weapons + vehicles + maps catalog ----------
+
+/**
+ * Puts anything from catalog.js that isn't on its board yet into Unranked. The catalog is a
+ * <script> (window.CATALOG) rather than JSON so it also loads when index.html is opened from disk.
+ */
+function loadCatalog() {
+  const catalog = window.CATALOG;
+  if (!catalog) return;
+  for (const tab of CATALOG_TABS) {
+    const placed = placedOn(tab);
+    for (const item of catalog[tab] || []) {
+      state.items[tab][item.name] = { ...state.items[tab][item.name], ...item };
+      if (!placed.has(item.name)) board(tab).pool.push(item.name);
+    }
+  }
+  save();
+}
+
+/** The type dropdown, for the tabs whose cards have types (weapons, vehicles). */
+function fillTypeFilter() {
+  const tab = state.tab;
+  if (tab !== "weapons" && tab !== "vehicles") return;
+  const types = [...new Set(Object.values(state.items[tab]).map((w) => w.type))].filter(Boolean).sort();
+  const sel = $("#typeFilter");
+  sel.innerHTML = "";
+  const opt = (value, text) => { const o = document.createElement("option"); o.value = value; o.textContent = text; sel.append(o); };
+  if (tab === "weapons") opt("guns", "Guns (no gadgets / melee)");
+  opt("all", tab === "weapons" ? "Everything" : "All vehicles");
+  for (const t of types) opt(t, t);
+  const want = state.typeFilter[tab];
+  sel.value = [...sel.options].some((o) => o.value === want) ? want : sel.options[0].value;
+}
+
+$("#typeFilter").addEventListener("change", () => {
+  state.typeFilter[state.tab] = $("#typeFilter").value;
+  save();
+  applyFilter();
+});
+
+// ---------- API ----------
+
+async function api(path, params, timeout = 20000) {
+  const res = await fetch(`${API}${path}?${new URLSearchParams(params)}`, { signal: AbortSignal.timeout(timeout) });
+  const body = await res.json().catch(() => null);
+  if (body?.errors?.length) throw new Error(body.errors.join(", "));
+  if (!res.ok || !body) throw new Error(`gametools returned ${res.status}`);
+  return body;
+}
+
+async function mapLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) { const n = i++; out[n] = await fn(items[n], n); }
+  }));
+  return out;
+}
+
+/** Adds or updates a player (name/avatar) and their place in a platoon's roster and board. */
+function upsertPlayer(id, info, roster = {}, pid = state.platoonId) {
+  state.players[id] = { ...(state.players[id] || {}), ...info };
+  const p = platoon(pid);
+  p.roster[id] = { ...(p.roster[id] || {}), ...roster };
+  if (!placedOn("players", pid).has(id)) board("players", pid).pool.push(id);
+}
+
+/** Current names + avatars. The roster keeps old names after renames, so ask the account lookup. */
+async function enrich(ids, force = false) {
+  const todo = ids.filter((id) => force || Date.now() - (state.players[id]?.checkedAt || 0) > PLAYER_TTL);
+  if (!todo.length) return;
+  let done = 0;
+  await mapLimit(todo, 6, async (id) => {
+    try {
+      const p = await api("/bfglobal/player/", { playerid: id, platform: "pc" }, 15000);
+      state.players[id] = {
+        ...state.players[id],
+        name: p.personaName || state.players[id].name,
+        avatar: p.avatar || state.players[id].avatar || "",
+        checkedAt: Date.now(),
+      };
+      renderCard(id);
+    } catch {}
+    if (state.tab === "players") setStatus(`Loading avatars… ${++done}/${todo.length}`);
+  });
+  save();
+}
+
+/** Fetches a platoon's roster into its board. Ranking progress is never touched. */
+async function syncRoster(force = false, pid = state.platoonId) {
+  if (!pid) return;
+  const showing = () => state.tab === "players" && state.platoonId === pid;
+  if (showing()) setStatus("Fetching roster from gametools…");
+  try {
+    const data = await api("/bfglobal/detailedplatoon/", { id: pid, platform: "pc" });
+    const p = platoon(pid);
+    Object.assign(p, {
+      tag: pid === OUL_ID ? "oul" : data.tag || p.tag,
+      name: data.name || p.name,
+      emblem: data.emblem || p.emblem,
+      size: data.currentSize ?? p.size,
+      listed: (data.members || []).length,
+      fetchedAt: Date.now(),
+    });
+    const members = data.members || [];
+    const rosterIds = new Set(members.map((m) => String(m.id)));
+    for (const m of members) {
+      const id = String(m.id);
+      upsertPlayer(id, { name: state.players[id]?.name || m.name }, { role: m.role, member: true, extra: false }, pid);
+    }
+    const extras = pid === OUL_ID ? OUL_KNOWN_EXTRA : [];
+    for (const m of extras) {
+      if (!rosterIds.has(m.id)) upsertPlayer(m.id, { name: state.players[m.id]?.name || m.name }, { role: "Member", extra: true, member: true }, pid);
+    }
+    // Members who left and were never ranked just drop out of the pool. Extras found by the scan or
+    // added by hand are kept: the roster not listing them doesn't mean they left.
+    const known = new Set([...rosterIds, ...extras.map((m) => m.id)]);
+    board("players", pid).pool = board("players", pid).pool
+      .filter((id) => known.has(id) || rosterOf(id, pid).extra || rosterOf(id, pid).manual);
+    save();
+    if (showing()) render();
+    await enrich(Object.keys(p.roster), force);
+    if (showing()) showTabStatus();
+  } catch (e) {
+    if (showing()) {
+      render();
+      setStatus(`Couldn't reach gametools (${e.message}). Showing the saved roster.`);
+    }
+  }
+}
+
+/** "Found 56 of 67 members" so it's clear when someone is still missing. */
+function showCount(extra = "") {
+  const p = platoon();
+  if (!p) return setStatus("Search for a platoon to rank its players, or pick the Weapons, Vehicles or Maps tab.");
+  const members = Object.values(p.roster).filter((r) => r.member).length;
+  const missing = (p.size || 0) - members;
+  setStatus(
+    `Found ${members} of ${p.size || "?"} members` +
+    (missing > 0 ? ` · ${missing} not found yet (they show up when the scan sees them online, or add them by name)` : "") +
+    (p.lastScan ? ` · last server scan ${new Date(p.lastScan).toLocaleTimeString()}` : "") +
+    (extra ? ` · ${extra}` : ""),
+  );
+}
+
+/** Whether a player is in a platoon, from their full profile (the only place gametools exposes it). */
+async function isMember(id, pid = state.platoonId) {
+  const p = await api("/bfv/all/", { playerid: id, platform: "pc", skip_battlelog: true, format_values: false }, 30000);
+  return p.activePlatoon?.id === pid || (p.platoons || []).some((pl) => pl.id === pid);
+}
+
+/** The tags servers show for a platoon. The API spells oul "ouI" (capital i). */
+const tagsFor = (p) => (p.id === OUL_ID ? ["ouI", "oul"] : [p.tag]).filter(Boolean);
+
+/** A scan is due when the tag index is stale, or the open platoon is missing members and wasn't scanned lately. */
+function scanDue() {
+  const p = platoon();
+  const missing = p?.size && Object.values(p.roster).filter((r) => r.member).length < p.size;
+  return Date.now() - (state.lastTagScan || 0) > SCAN_INTERVAL || (missing && Date.now() - (p.lastScan || 0) > SCAN_INTERVAL);
+}
+
+/** Most tags kept in the tag index; the least recently seen are dropped past this. */
+const TAG_INDEX_MAX = 3000;
+
+/** Remembers a platoon tag seen on a server, with a few players wearing it (to look the platoon up later). */
+function recordTag(tag, playerId, now) {
+  const e = (state.tagIndex[tag] ||= { ids: [], count: 0 });
+  e.lastSeen = now;
+  e.count++;
+  if (!e.ids.includes(playerId)) e.ids = [playerId, ...e.ids].slice(0, 3);
+}
+
+function pruneTagIndex() {
+  const tags = Object.keys(state.tagIndex);
+  if (tags.length <= TAG_INDEX_MAX) return;
+  tags.sort((a, b) => state.tagIndex[a].lastSeen - state.tagIndex[b].lastSeen);
+  for (const t of tags.slice(0, tags.length - TAG_INDEX_MAX)) delete state.tagIndex[t];
+}
+
+/**
+ * Every live server's player list (only single-server requests include platoon tags). Does two
+ * things: records every tag it sees in the tag index, so platoon search can find active platoons by
+ * tag; and looks for open-platoon members the roster endpoint left out. Tags aren't unique, so each
+ * new find is checked against the player's profile. Takes about a minute and runs quietly in the
+ * background; it only speaks up when it finds someone new.
+ */
+let scanning = false;
+async function scanServers() {
+  if (scanning) return;
+  const pid = state.platoonId;
+  const p = platoon(pid);
+  const found = p ? Object.values(p.roster).filter((r) => r.member).length : 0;
+  const lookForMembers = Boolean(p?.size && found < p.size);
+  scanning = true;
+  try {
+    const tags = p ? tagsFor(p) : [];
+    const { servers } = await api("/bfv/servers/", { name: "", platform: "pc", limit: 250, region: "all" }, 30000);
+    const live = servers.filter((s) => s.playerAmount > 0);
+    const candidates = new Map();
+    const now = Date.now();
+    await mapLimit(live, 8, async (s) => {
+      try {
+        const r = await api("/bfv/players/", { gameid: s.gameId }, 25000);
+        const players = [...(r.teams || []).flatMap((t) => t.players || []), ...(r.que || []), ...(r.loading || [])];
+        for (const pl of players) {
+          if (!pl.platoon) continue;
+          const id = String(pl.player_id);
+          recordTag(pl.platoon, id, now);
+          if (lookForMembers && tags.includes(pl.platoon) && !rosterOf(id, pid).member) candidates.set(id, pl.name);
+        }
+      } catch {}
+    });
+    pruneTagIndex();
+    state.lastTagScan = now;
+    const added = [];
+    await mapLimit([...candidates], 3, async ([id, name]) => {
+      if (!(await isMember(id, pid).catch(() => false)) || !state.platoons[pid]) return;
+      upsertPlayer(id, { name: state.players[id]?.name || name }, { role: "Member", extra: true, member: true, foundAt: Date.now() }, pid);
+      added.push(id);
+    });
+    if (lookForMembers && state.platoons[pid]) p.lastScan = Date.now();
+    save();
+    if (added.length) {
+      await enrich(added, true);
+      if (state.tab === "players" && state.platoonId === pid) {
+        render();
+        showCount(`found ${added.length} new online: ${added.map((id) => state.players[id].name).join(", ")}`);
+      }
+    }
+  } catch {
+    // Background job; the next run tries again.
+  } finally {
+    scanning = false;
+  }
+}
+
+// ---------- rendering ----------
+
+/** "Member" = in the platoon but missing from the roster endpoint, so its rank is unknown. */
+const ROLE_SHORT = { General: "GEN", Colonel: "COL", Private: "", Member: "" };
+
+function cardEl(id) {
+  const p = entity(id) || { name: id };
+  const r = state.tab === "players" ? rosterOf(id) : {};
+  const el = document.createElement("div");
+  el.className = "card" +
+    // Vehicle renders are the same kind of wide transparent PNG as weapons.
+    (state.tab === "weapons" || state.tab === "vehicles" ? " weapon" : state.tab === "maps" ? " map" : "") +
+    (r.manual && !r.member ? " extra" : "");
+  el.dataset.id = id;
+  fillCard(el, p);
+  return el;
+}
+
+function badge(p, id) {
+  if (state.tab === "weapons" || state.tab === "vehicles") return p.type || "";
+  if (state.tab === "maps") return "";
+  const r = rosterOf(id);
+  return r.manual && !r.member ? "NOT IN " + (platoon().tag || "PLATOON").toUpperCase()
+    : ROLE_SHORT[r.role] ?? (r.role || "").slice(0, 3).toUpperCase();
+}
+
+function fillCard(el, p) {
+  const id = el.dataset.id;
+  el.innerHTML = "";
+  const src = p.avatar || p.image;
+  if (src) {
+    const img = document.createElement("img");
+    // No crossOrigin here: EA's CDN only sends CORS headers for some images, and asking for CORS
+    // makes the others fail to show. Save image converts them separately (see imageDataUrl).
+    img.src = src;
+    img.alt = "";
+    img.loading = "lazy";
+    img.onerror = () => { img.replaceWith(initials(p.name)); };
+    el.append(img);
+  } else el.append(initials(p.name));
+  const role = badge(p, id);
+  if (role) { const r = document.createElement("span"); r.className = "role"; r.textContent = role; el.append(r); }
+  if (p.note) { const d = document.createElement("span"); d.className = "note-dot"; d.textContent = "✎"; el.append(d); }
+  const n = document.createElement("div"); n.className = "name"; n.textContent = p.name; el.append(n);
+  const sub = state.tab === "players" ? rosterOf(id).role : p.type;
+  el.title = `${p.name}${sub ? " · " + sub : ""}${p.note ? "\n\n" + p.note : ""}`;
+}
+
+function initials(name = "?") {
+  const d = document.createElement("div");
+  d.className = "initials";
+  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
+  d.style.background = `hsl(${h} 35% 32%)`;
+  d.textContent = name.replace(/[^a-z0-9]/gi, "").slice(0, 2).toUpperCase() || "?";
+  return d;
+}
+
+/** Redraws one card if it's on screen (player updates arrive while other tabs may be open). */
+function renderCard(id, tab = "players") {
+  if (state.tab !== tab) return;
+  const el = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+  if (el) fillCard(el, entity(id));
+}
+
+const DEFAULT_EMBLEM = "https://eaassets-a.akamaihd.net/battlelog/bf-emblems/prod_default/exclusive/256/Default_V.png";
+
+function renderPlatoon() {
+  const p = platoon();
+  document.body.classList.toggle("no-platoon", !p);
+  if (p) {
+    $("#barEmblem").src = p.emblem || DEFAULT_EMBLEM;
+    $("#barName").innerHTML = "";
+    if (p.tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = `[${p.tag}] `; $("#barName").append(t); }
+    $("#barName").append(document.createTextNode(`${p.name || "…"}${p.size ? ` · ${p.size} members` : ""}`));
+  }
+
+  // Other platoons opened before, for one-click switching.
+  const recent = $("#recent");
+  recent.innerHTML = "";
+  for (const other of Object.values(state.platoons)) {
+    if (other.id === p?.id) continue;
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    const open = btn(other.tag ? `[${other.tag}] ${other.name}` : other.name, `Switch to ${other.name}`, () => switchPlatoon(other.id));
+    open.className = "open";
+    const del = btn("✕", `Forget ${other.name} (deletes its tiers)`, () => forgetPlatoon(other.id));
+    chip.append(open, del);
+    recent.append(chip);
+  }
+}
+
+function render() {
+  renderPlatoon();
+  document.body.dataset.tab = state.tab;
+  fillTypeFilter();
+  for (const b of document.querySelectorAll("#tabs button")) {
+    b.classList.toggle("active", b.dataset.tab === state.tab);
+    const tiers = board(b.dataset.tab).tiers;
+    const ranked = tiers.reduce((n, t) => n + t.items.length, 0);
+    b.querySelector(".count").textContent = ranked ? `(${ranked})` : "";
+  }
+  $("#filter").placeholder = TABS[state.tab].filter;
+  $("#noteText").placeholder = TABS[state.tab].note;
+
+  const boardEl = $("#board");
+  boardEl.innerHTML = "";
+  for (const t of board().tiers) {
+    const row = document.createElement("div");
+    row.className = "tier";
+    row.dataset.tier = t.id;
+
+    const label = document.createElement("div");
+    label.className = "label";
+    label.contentEditable = "true";
+    label.spellcheck = false;
+    label.style.background = t.color;
+    label.textContent = t.label;
+    label.classList.toggle("long", t.label.length > 4);
+    label.addEventListener("input", () => {
+      t.label = label.textContent.trim();
+      label.classList.toggle("long", t.label.length > 4);
+      save();
+    });
+    label.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); label.blur(); } });
+
+    const drop = document.createElement("div");
+    drop.className = "drop";
+    drop.dataset.tier = t.id;
+    for (const id of t.items) if (entity(id)) drop.append(cardEl(id));
+
+    const tools = document.createElement("div");
+    tools.className = "tier-tools";
+    const color = document.createElement("input");
+    color.type = "color"; color.value = t.color; color.title = "Tier color";
+    color.addEventListener("input", () => { t.color = color.value; label.style.background = t.color; save(); });
+    const grip = document.createElement("div");
+    grip.className = "grip";
+    grip.textContent = "⠿";
+    grip.title = "Drag to move this tier";
+    const del = btn("✕", "Delete tier (its cards go back to Unranked)", () => {
+      if (t.items.length && !confirm(`Delete tier "${t.label}"? Its ${t.items.length} ${TABS[state.tab].noun} go back to Unranked.`)) return;
+      board().pool.push(...t.items);
+      board().tiers = board().tiers.filter((x) => x.id !== t.id);
+      save(); render();
+      if (state.tab !== "players") showTabStatus();
+    });
+    tools.append(grip, color, del);
+
+    row.append(label, drop, tools);
+    boardEl.append(row);
+  }
+
+  const pool = $("#pool");
+  pool.innerHTML = "";
+  pool.dataset.tier = "pool";
+  for (const id of board().pool) if (entity(id)) pool.append(cardEl(id));
+  applyFilter();
+}
+
+function btn(text, title, onClick) {
+  const b = document.createElement("button");
+  b.textContent = text; b.title = title; b.type = "button";
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+/** The search box, plus the type dropdown on Weapons and Vehicles. Only Unranked is filtered. */
+function applyFilter() {
+  const q = $("#filter").value.trim().toLowerCase();
+  const type = state.typeFilter[state.tab] || "all";
+  let shown = 0;
+  for (const el of document.querySelectorAll("#pool .card")) {
+    const e = entity(el.dataset.id);
+    let hide = Boolean(q) && !e?.name.toLowerCase().includes(q);
+    if ((state.tab === "weapons" || state.tab === "vehicles") && !hide) {
+      hide = type === "guns" ? NON_GUNS.includes(e?.type) : type !== "all" && e?.type !== type;
+    }
+    el.classList.toggle("hidden-by-filter", hide);
+    if (!hide) shown++;
+  }
+  const total = board().pool.length;
+  $("#poolCount").textContent = shown === total ? `(${total})` : `(${shown} shown of ${total})`;
+}
+
+/** Rebuild the saved order from what's on screen after a drop. */
+function syncFromDom() {
+  for (const t of board().tiers) {
+    const drop = document.querySelector(`.drop[data-tier="${t.id}"]`);
+    t.items = [...drop.querySelectorAll(".card")].map((c) => c.dataset.id);
+  }
+  board().pool = [...$("#pool").querySelectorAll(".card")].map((c) => c.dataset.id);
+  save();
+  applyFilter();
+  refreshTabCounts();
+}
+
+function refreshTabCounts() {
+  for (const b of document.querySelectorAll("#tabs button")) {
+    const ranked = board(b.dataset.tab).tiers.reduce((n, t) => n + t.items.length, 0);
+    b.querySelector(".count").textContent = ranked ? `(${ranked})` : "";
+  }
+  if (state.tab !== "players") showTabStatus();
+}
+
+// ---------- drag and drop (pointer events, so touch works too) ----------
+
+let drag = null;
+
+document.addEventListener("pointerdown", (e) => {
+  const card = e.target.closest(".card");
+  if (!card || e.button !== 0) return;
+  e.preventDefault();
+  const rect = card.getBoundingClientRect();
+  drag = {
+    card, started: false, pointerId: e.pointerId,
+    startX: e.clientX, startY: e.clientY,
+    offX: e.clientX - rect.left, offY: e.clientY - rect.top,
+    ghost: null,
+    longPress: e.pointerType !== "mouse" ? setTimeout(() => { if (drag && !drag.started) { openCtx(card, e.clientX, e.clientY); drag = null; } }, 550) : null,
+  };
+});
+
+document.addEventListener("pointermove", (e) => {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  if (!drag.started) {
+    if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 5) return;
+    clearTimeout(drag.longPress);
+    drag.started = true;
+    drag.ghost = drag.card.cloneNode(true);
+    drag.ghost.classList.add("dragging");
+    document.body.append(drag.ghost);
+    drag.card.classList.add("placeholder");
+  }
+  drag.ghost.style.left = e.clientX - drag.offX + "px";
+  drag.ghost.style.top = e.clientY - drag.offY + "px";
+
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const zone = under?.closest(".drop") || under?.closest(".tier")?.querySelector(".drop");
+  if (!zone) return;
+  const target = under.closest(".card");
+  if (target && target !== drag.card && zone.contains(target)) {
+    const r = target.getBoundingClientRect();
+    const after = e.clientX > r.left + r.width / 2;
+    zone.insertBefore(drag.card, after ? target.nextSibling : target);
+  } else if (!target) {
+    // Empty space in a row: put it after the last card on or above the pointer.
+    const cards = [...zone.querySelectorAll(".card:not(.hidden-by-filter)")].filter((c) => c !== drag.card);
+    const before = cards.find((c) => {
+      const r = c.getBoundingClientRect();
+      return e.clientY < r.top || (e.clientY <= r.bottom && e.clientX < r.left);
+    });
+    if (before) zone.insertBefore(drag.card, before);
+    else if (zone.lastElementChild !== drag.card) zone.append(drag.card);
+  }
+  autoScroll(e.clientY);
+});
+
+function endDrag(e) {
+  if (!drag || (e && e.pointerId !== drag.pointerId)) return;
+  clearTimeout(drag.longPress);
+  if (drag.started) {
+    drag.ghost.remove();
+    drag.card.classList.remove("placeholder");
+    syncFromDom();
+  }
+  drag = null;
+}
+document.addEventListener("pointerup", endDrag);
+document.addEventListener("pointercancel", endDrag);
+
+function autoScroll(y) {
+  const edge = 60;
+  if (y < edge + 110) window.scrollBy(0, -12);
+  else if (y > innerHeight - edge) window.scrollBy(0, 12);
+}
+
+// ---------- dragging whole tiers (by the name or the ⠿ grip) ----------
+
+let tierDrag = null;
+
+document.addEventListener("pointerdown", (e) => {
+  const handle = e.button === 0 && e.target.closest(".tier .grip, .tier .label");
+  if (!handle) return;
+  // The name stays clickable for renaming: dragging only starts once the pointer moves.
+  if (handle.classList.contains("grip")) e.preventDefault();
+  tierDrag = { row: handle.closest(".tier"), pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, started: false };
+});
+
+document.addEventListener("pointermove", (e) => {
+  if (!tierDrag || e.pointerId !== tierDrag.pointerId) return;
+  const { row } = tierDrag;
+  if (!tierDrag.started) {
+    if (Math.hypot(e.clientX - tierDrag.startX, e.clientY - tierDrag.startY) < 6) return;
+    tierDrag.started = true;
+    document.activeElement?.blur();
+    getSelection().removeAllRanges();
+    document.body.classList.add("tier-dragging");
+    const rect = row.getBoundingClientRect();
+    tierDrag.offY = e.clientY - rect.top;
+    tierDrag.ghost = row.cloneNode(true);
+    tierDrag.ghost.classList.add("tier-ghost");
+    tierDrag.ghost.style.left = rect.left + "px";
+    tierDrag.ghost.style.width = rect.width + "px";
+    document.body.append(tierDrag.ghost);
+    row.classList.add("tier-placeholder");
+  }
+  tierDrag.ghost.style.top = e.clientY - tierDrag.offY + "px";
+
+  // Drop above the first row whose middle is below the pointer.
+  const rows = [...$("#board").children].filter((r) => r !== row);
+  const before = rows.find((r) => { const b = r.getBoundingClientRect(); return e.clientY < b.top + b.height / 2; });
+  if (before) { if (row.nextElementSibling !== before) $("#board").insertBefore(row, before); }
+  else if ($("#board").lastElementChild !== row) $("#board").append(row);
+  autoScroll(e.clientY);
+});
+
+function endTierDrag(e) {
+  if (!tierDrag || e.pointerId !== tierDrag.pointerId) return;
+  if (tierDrag.started) {
+    tierDrag.ghost.remove();
+    tierDrag.row.classList.remove("tier-placeholder");
+    document.body.classList.remove("tier-dragging");
+    const order = [...$("#board").children].map((r) => r.dataset.tier);
+    board().tiers.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    save();
+  }
+  tierDrag = null;
+}
+document.addEventListener("pointerup", endTierDrag);
+document.addEventListener("pointercancel", endTierDrag);
+
+// ---------- context menu ----------
+
+const ctx = $("#ctx");
+function openCtx(card, x, y) {
+  const id = card.dataset.id;
+  const p = entity(id);
+  ctx.innerHTML = "";
+  const item = (text, fn) => { const b = btn(text, "", () => { closeCtx(); fn(); }); ctx.append(b); };
+  item(p?.note ? "✎ Edit note…" : "✎ Add note…", () => openNote(id));
+  for (const t of board().tiers) item(`Move to ${t.label || "(unnamed)"}`, () => moveTo(id, t.id));
+  item("Send back to Unranked", () => moveTo(id, "pool"));
+  if (state.tab === "players") {
+    item("Open on gametools ↗", () => window.open(`https://gametools.network/stats/pc/playerid/${id}?game=bfv`, "_blank", "noopener"));
+    if (rosterOf(id).manual) item("Remove player", () => {
+      for (const t of board().tiers) t.items = t.items.filter((x) => x !== id);
+      board().pool = board().pool.filter((x) => x !== id);
+      // The player record stays: other platoons' boards may still use it.
+      delete platoon().roster[id];
+      save(); render();
+    });
+  }
+  ctx.style.display = "block";
+  const w = ctx.offsetWidth, h = ctx.offsetHeight;
+  ctx.style.left = Math.min(x, innerWidth - w - 8) + "px";
+  ctx.style.top = Math.min(y, innerHeight - h - 8) + "px";
+}
+const closeCtx = () => { ctx.style.display = "none"; };
+document.addEventListener("contextmenu", (e) => {
+  const card = e.target.closest(".card");
+  if (!card) return;
+  e.preventDefault();
+  drag = null;
+  openCtx(card, e.clientX, e.clientY);
+});
+document.addEventListener("pointerdown", (e) => { if (!ctx.contains(e.target)) closeCtx(); }, true);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeCtx(); });
+
+// ---------- notes ----------
+
+const noteDlg = $("#noteDlg");
+let noteFor = null;
+
+function openNote(id) {
+  noteFor = { id, tab: state.tab };
+  const p = entity(id);
+  $("#noteTitle").textContent = `Note for ${p.name}`;
+  $("#noteText").value = p.note || "";
+  $("#noteClear").style.visibility = p.note ? "visible" : "hidden";
+  noteDlg.showModal();
+  $("#noteText").focus();
+}
+
+function setNote(text) {
+  const p = noteFor && entity(noteFor.id, noteFor.tab);
+  if (!p) return;
+  if (text.trim()) p.note = text.trim();
+  else delete p.note;
+  save();
+  renderCard(noteFor.id, noteFor.tab);
+}
+
+noteDlg.querySelector("form").addEventListener("submit", () => setNote($("#noteText").value));
+$("#noteCancel").addEventListener("click", () => noteDlg.close());
+$("#noteClear").addEventListener("click", () => { setNote(""); noteDlg.close(); });
+// Ctrl+Enter saves.
+$("#noteText").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { setNote($("#noteText").value); noteDlg.close(); }
+});
+document.addEventListener("dblclick", (e) => {
+  const card = e.target.closest(".card");
+  if (card) openNote(card.dataset.id);
+});
+
+function moveTo(id, tierId) {
+  for (const t of board().tiers) t.items = t.items.filter((x) => x !== id);
+  board().pool = board().pool.filter((x) => x !== id);
+  if (tierId === "pool") board().pool.push(id);
+  else board().tiers.find((t) => t.id === tierId).items.push(id);
+  save(); render();
+  if (state.tab !== "players") showTabStatus();
+}
+
+// ---------- toolbar ----------
+
+$("#filter").addEventListener("input", applyFilter);
+$("#refresh").addEventListener("click", () => syncRoster(true));
+
+/** New tiers go above the Unknown tier (if it's still last) and open for renaming. */
+function addTier() {
+  const tier = { id: uid(), label: "New", color: "#c8c8c8", items: [] };
+  const tiers = board().tiers;
+  const last = tiers[tiers.length - 1];
+  if (last && last.label === UNKNOWN_LABEL) tiers.splice(tiers.length - 1, 0, tier);
+  else tiers.push(tier);
+  save(); render();
+  const label = document.querySelector(`.tier[data-tier="${tier.id}"] .label`);
+  label.focus();
+  getSelection().selectAllChildren(label);
+}
+$("#addTier").addEventListener("click", addTier);
+$("#addTierBottom").addEventListener("click", addTier);
+
+$("#reset").addEventListener("click", () => {
+  const noun = TABS[state.tab].noun;
+  const where = state.tab === "players" ? `${platoon().name}'s players` : `all ${noun}`;
+  if (!confirm(`Move ${where} back to Unranked and restore the default tiers? Notes are kept, and nothing else is touched.`)) return;
+  const old = board();
+  const fresh = freshBoard(state.tab);
+  fresh.pool = [...old.pool, ...old.tiers.flatMap((t) => t.items)];
+  if (state.tab === "players") state.playerBoards[state.platoonId] = fresh;
+  else state.boards[state.tab] = fresh;
+  save(); render(); showTabStatus();
+});
+
+const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(r.result);
+  r.onerror = reject;
+  r.readAsDataURL(blob);
+});
+
+/**
+ * An image as a data: URL, so it can be drawn into the PNG. EA's CDN sends CORS headers for only
+ * some images; the rest go through images.weserv.nl, a public image proxy that adds them.
+ */
+const imageCache = new Map();
+function imageDataUrl(url) {
+  if (!imageCache.has(url)) {
+    const get = async (u) => {
+      const res = await fetch(u, { mode: "cors", cache: "no-store", signal: AbortSignal.timeout(10000) });
+      if (!res.ok) throw new Error(res.status);
+      return blobToDataUrl(await res.blob());
+    };
+    imageCache.set(url, get(url)
+      .catch(() => get(`https://images.weserv.nl/?url=${encodeURIComponent(url)}`))
+      .catch(() => null));
+  }
+  return imageCache.get(url);
+}
+
+$("#png").addEventListener("click", async () => {
+  if (!window.html2canvas) return alert("The image library didn't load (offline?).");
+  setStatus("Preparing images…");
+  try {
+    const imgs = [...$("#board").querySelectorAll(".card img")];
+    // Lazy images that never scrolled into view have no pixels yet; html2canvas needs them loaded.
+    for (const img of imgs) img.loading = "eager";
+    const urls = [...new Set(imgs.map((img) => img.src))];
+    const data = new Map(await Promise.all(urls.map(async (u) => [u, await imageDataUrl(u)])));
+    setStatus("Rendering image…");
+    const canvas = await html2canvas($("#board"), {
+      backgroundColor: "#000", scale: 2,
+      ignoreElements: (el) => el.classList?.contains("tier-tools"),
+      onclone: (doc) => {
+        for (const img of doc.querySelectorAll("#board .card img")) {
+          const d = data.get(img.src);
+          if (d) img.src = d;
+          else img.replaceWith(initials(entity(img.closest(".card").dataset.id)?.name));
+        }
+      },
+    });
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    const what = state.tab === "players" ? (platoon()?.tag || platoon()?.name || "platoon").replace(/[^\w-]+/g, "") || "platoon" : state.tab;
+    a.download = `${what}-tierlist-${new Date().toISOString().slice(0, 10)}.png`;
+    a.click();
+    setStatus("Image saved.");
+  } catch (err) {
+    setStatus("Couldn't render the image: " + err.message);
+  }
+});
+
+$("#addForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("#addName").value.trim();
+  if (!name) return;
+  setStatus(`Looking up ${name}…`);
+  try {
+    const p = await api("/bfglobal/player/", { name, platform: "pc" }, 15000);
+    const id = String(p.personaId);
+    const pid = state.platoonId;
+    const pname = platoon(pid).tag || platoon(pid).name;
+    if (placedOn("players", pid).has(id)) { setStatus(`${p.personaName} is already on the list.`); return; }
+    setStatus(`Checking whether ${p.personaName} is in ${pname}…`);
+    let member = null;
+    try { member = await isMember(id, pid); } catch {}
+    if (member === false && !confirm(`${p.personaName} isn't in ${pname} according to gametools. Add them anyway?`)) {
+      showCount();
+      return;
+    }
+    upsertPlayer(id, { name: p.personaName, avatar: p.avatar || "", checkedAt: Date.now() },
+      { role: member ? "Member" : "Added", member: Boolean(member), extra: Boolean(member), manual: !member }, pid);
+    $("#addName").value = "";
+    save(); render();
+    showCount(member ? `added ${p.personaName} (${pname} member)`
+      : member === false ? `added ${p.personaName} (not in ${pname})` : `added ${p.personaName} (couldn't check membership)`);
+  } catch (err) {
+    setStatus(`No PC player named "${name}" (${err.message}).`);
+  }
+});
+
+// ---------- picking a platoon ----------
+
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+/** Hides the search results (and stops a search that's still running from redrawing them). */
+function closeResults() {
+  searchToken++;
+  $("#platoonResults").innerHTML = "";
+  $("#platoonQuery").value = "";
+}
+
+/** Opens a platoon (new or seen before). Each one keeps its own tiers. */
+async function switchPlatoon(pid, info = {}) {
+  closeResults();
+  state.platoons[pid] ||= freshPlatoon(pid, info);
+  state.platoonId = pid;
+  state.tab = "players";
+  $("#filter").value = "";
+  save();
+  render();
+  showCount();
+  await syncRoster(false, pid);
+  if (scanDue()) scanServers();
+}
+
+function forgetPlatoon(pid) {
+  const p = platoon(pid);
+  const ranked = board("players", pid).tiers.reduce((n, t) => n + t.items.length, 0);
+  if (!confirm(`Forget ${p.name}? ${ranked ? `Its ${ranked} ranked players and tiers are deleted. ` : ""}Player notes are kept.`)) return;
+  delete state.platoons[pid];
+  delete state.playerBoards[pid];
+  save();
+  render();
+}
+
+function platoonButton(p, onClick) {
+  const b = document.createElement("button");
+  b.type = "button";
+  const img = document.createElement("img");
+  img.src = p.emblem || DEFAULT_EMBLEM;
+  img.alt = "";
+  img.onerror = () => { img.src = DEFAULT_EMBLEM; };
+  const text = document.createElement("div");
+  const tag = document.createElement("span");
+  tag.className = "tag";
+  tag.textContent = p.tag ? `[${p.tag}] ` : "";
+  text.append(tag, document.createTextNode(p.name || p.id));
+  const meta = document.createElement("div");
+  meta.className = "muted";
+  meta.textContent = [
+    p.currentSize != null ? `${p.currentSize} members` : "",
+    p.seenOnline ? "tag seen on servers" : "",
+    state.platoons[p.id] ? "opened before" : "",
+  ].filter(Boolean).join(" · ");
+  text.append(meta);
+  b.append(img, text);
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+async function searchPlatoons(query) {
+  const out = $("#platoonResults");
+  out.innerHTML = "";
+  const q = query.trim();
+  if (!q) return;
+  const note = (t) => { const d = document.createElement("div"); d.className = "muted"; d.textContent = t; out.append(d); };
+
+  // A pasted ID or link (gametools / companion URLs contain the platoon's ID).
+  const id = q.match(UUID)?.[0]?.toLowerCase();
+  if (id) {
+    searchToken++;
+    note("Loading…");
+    try {
+      const p = await api("/bfglobal/detailedplatoon/", { id, platform: "pc" });
+      out.innerHTML = "";
+      out.append(platoonButton({ ...p, id }, () => switchPlatoon(id, { tag: p.tag, name: p.name, emblem: p.emblem })));
+    } catch (e) {
+      out.innerHTML = "";
+      note(`No platoon with that ID (${e.message}).`);
+    }
+    return;
+  }
+
+  const token = ++searchToken;
+  const ql = q.toLowerCase();
+  const results = new Map();
+  let pending = 0;
+  let total = 0;
+
+  const draw = () => {
+    if (token !== searchToken) return;
+    out.innerHTML = "";
+    const list = [...results.values()].sort((a, b) => (b.currentSize || 0) - (a.currentSize || 0)).slice(0, 30);
+    for (const p of list) {
+      out.append(platoonButton(p, () => switchPlatoon(p.id, { tag: p.tag, name: p.name, emblem: p.emblem })));
+    }
+    if (pending) note(`Searching… ${total - pending}/${total} (biggest first; the list fills in as results arrive)`);
+    else if (!list.length) note(`No PC platoons matching "${q}". Try the exact name or tag.`);
+    else note(`${results.size} platoons found, biggest first.` + (Object.keys(state.tagIndex).length
+      ? ` Tags of ${Object.keys(state.tagIndex).length} platoons seen on servers are searched too.`
+      : " Tip: the tag index fills from the background server scan about a minute after the page opens, which helps find active platoons by tag."));
+  };
+  let drawTimer;
+  const scheduleDraw = () => { clearTimeout(drawTimer); drawTimer = setTimeout(draw, 120); };
+  const add = (p, extra = {}) => {
+    if (!p?.id) return;
+    results.set(p.id, { ...results.get(p.id), ...p, ...extra });
+    scheduleDraw();
+  };
+  const contains = (p) => p.tag?.toLowerCase().includes(ql) || p.name?.toLowerCase().includes(ql);
+
+  // 1. Tags seen on live servers → the platoon they belong to (via a wearer's profile, cached a week).
+  const tagHits = Object.entries(state.tagIndex)
+    .filter(([tag]) => tag.toLowerCase().includes(ql))
+    .sort(([a, x], [b, y]) => Number(b.toLowerCase() === ql) - Number(a.toLowerCase() === ql) || y.count - x.count)
+    .slice(0, 8);
+  const tagTask = async ([tag, e]) => {
+    if (!e.platoons || Date.now() - (e.resolvedAt || 0) > 7 * 24 * 60 * 60 * 1000) {
+      const ids = new Map();
+      for (const playerId of e.ids.slice(0, 2)) {
+        try {
+          const prof = await api("/bfv/all/", { playerid: playerId, platform: "pc", skip_battlelog: true, format_values: false }, 30000);
+          const ap = prof.activePlatoon;
+          if (ap?.id && ap.tag === tag) ids.set(ap.id, ap);
+        } catch {}
+      }
+      e.platoons = [];
+      for (const ap of ids.values()) {
+        try {
+          const d = await api("/bfglobal/detailedplatoon/", { id: ap.id, platform: "pc" });
+          e.platoons.push({ id: ap.id, tag: d.tag, name: d.name, emblem: d.emblem, currentSize: d.currentSize });
+        } catch {
+          e.platoons.push({ id: ap.id, tag: ap.tag, name: ap.name, emblem: ap.emblem });
+        }
+      }
+      // Only cache a hit; a failed lookup is retried on the next search.
+      if (e.platoons.length) { e.resolvedAt = Date.now(); save(); }
+    }
+    for (const p of e.platoons) add(p, { seenOnline: true });
+  };
+
+  // 2. EA's name search returns only 10 matches, so also search what was typed plus each letter and
+  //    digit after it (with and without a space). Together they surface far more platoons.
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789".split("");
+  const variants = [q, ...chars.map((c) => q + c), ...chars.map((c) => `${q} ${c}`)];
+  const nameTask = async (v) => {
+    try {
+      const res = await api("/bfglobal/platoons/", { name: v, platform: "pc" }, 15000);
+      // The exact query's results are trusted; the variants' only if they actually contain it.
+      for (const p of res.platoons || []) if (v === q || contains(p)) add(p);
+    } catch {}
+  };
+
+  const tasks = [...tagHits.map((h) => () => tagTask(h)), ...variants.map((v) => () => nameTask(v))];
+  total = pending = tasks.length;
+  draw();
+  await mapLimit(tasks, 8, async (task) => {
+    if (token !== searchToken) return;
+    await task();
+    pending--;
+    scheduleDraw();
+  });
+  pending = 0;
+  draw();
+}
+let searchToken = 0;
+
+$("#platoonSearch").addEventListener("submit", (e) => { e.preventDefault(); searchPlatoons($("#platoonQuery").value); });
+// Clearing the box (its ✕ or deleting the text) hides the results.
+$("#platoonQuery").addEventListener("input", () => { if (!$("#platoonQuery").value.trim()) closeResults(); });
+$("#platoonQuery").addEventListener("keydown", (e) => { if (e.key === "Escape") closeResults(); });
+
+// ---------- start ----------
+
+render();
+(async () => {
+  loadCatalog();
+  render();
+  showTabStatus();
+  // The roster is one small request, so it's fetched on every load; ranking progress is never touched.
+  // The server scan is ~60 requests, so it runs in the background at most every 15 minutes.
+  await syncRoster();
+  if (scanDue()) scanServers();
+})();
+setInterval(() => { if (!document.hidden) scanServers(); }, SCAN_INTERVAL);
+</script>
+</body>
+</html>
