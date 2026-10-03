@@ -308,7 +308,9 @@
 
   /* Gun stats */
   body:not([data-tab="stats"]) .stats-only { display: none !important; }
-  body[data-tab="stats"] .board-area, body[data-tab="stats"] .tiers-only { display: none !important; }
+  body:not([data-tab="veh"]) .veh-only { display: none !important; }
+  body[data-tab="stats"] .board-area, body[data-tab="stats"] .tiers-only,
+  body[data-tab="veh"] .board-area, body[data-tab="veh"] .tiers-only { display: none !important; }
 
   /* Players / Weapons / Vehicles / Maps under the Tier lists tab. */
   .subtabs {
@@ -496,7 +498,34 @@
   .gs-stance td { padding: 4px 6px 4px 0; font-weight: 600; }
   .gs-stance tbody tr + tr { box-shadow: 0 -1px 0 var(--line); }
 
+  /* Vehicle upgrades */
+  .vu-list { display: flex; flex-direction: column; gap: 2px; }
+  .vu-row {
+    display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 0 12px;
+    border: 0; border-radius: var(--radius-m); background: none; text-align: left; color: var(--text);
+    transition: background-color var(--duration-quick) var(--ease-smooth-out);
+  }
+  .vu-row:hover { background: var(--surface-2); }
+  .vu-row[aria-expanded="true"] { background: var(--surface-2); border-radius: var(--radius-m) var(--radius-m) 0 0; }
+  .vu-row .gs-names { flex: 1; }
+  .vu-thumb { width: 92px; flex-basis: 92px; }
+  .vu-sub-muted { color: var(--muted); }
+  .vu-tags { display: flex; gap: 6px; flex: 0 0 auto; }
+  .vu-tag {
+    padding: 2px 8px; border-radius: 999px; background: var(--surface-3); color: var(--muted);
+    font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .vu-tag.warn { background: rgb(236 106 94 / .14); color: #f0a49b; }
+  .vu-warn {
+    margin: 0 0 16px; padding: 10px 12px; border-radius: var(--radius-s);
+    background: rgb(236 106 94 / .1); box-shadow: inset 0 0 0 1px rgb(236 106 94 / .3); color: #f0c3bd; font-size: 13.5px; text-wrap: pretty;
+  }
+  .vu-detail-top { grid-template-columns: minmax(280px, 1.1fr) 1fr; }
+  .vu-build dl { grid-template-columns: auto 1fr; align-items: start; }
+  .vu-none { color: var(--muted); font-weight: 500; }
+
   @media (max-width: 900px) {
+    .vu-detail-top { grid-template-columns: 1fr; }
     .gs-head, .gs-row { grid-template-columns: minmax(150px, 1fr) repeat(3, 64px); gap: 10px; }
     [data-col="dmg"], [data-col="vel"], [data-col="mag"], [data-col="reload"] { display: none; }
     .gs-detail-top { grid-template-columns: 1fr; }
@@ -593,6 +622,7 @@
     <nav class="tabs" id="tabs" aria-label="Tier lists">
       <button data-top="tiers">Tier lists</button>
       <button data-top="stats">Gun stats</button>
+      <button data-top="veh">Vehicle upgrades</button>
       <span class="tab-indicator" aria-hidden="true"></span>
     </nav>
   </div>
@@ -650,6 +680,7 @@
   </section>
 
   <section id="gunStats" class="stats-only" aria-label="Gun stats"></section>
+  <section id="vehUpgrades" class="veh-only" aria-label="Vehicle upgrades"></section>
 
   <footer><p>Player, platoon and server data from <a href="https://gametools.network" target="_blank" rel="noopener">gametools.network</a>. Its roster endpoint often lists only part of a platoon, so members it leaves out are found by scanning live servers for the platoon's tag while the page is open (each find is checked against the player's profile, since tags aren't unique). Anyone still missing can be added by name. Your tier lists are stored only in this browser. Not affiliated with EA or DICE.</p></footer>
 </main>
@@ -674,6 +705,8 @@
 <script src="catalog.js"></script>
 <script src="weapon-stats.js"></script>
 <script src="gun-stats.js"></script>
+<script src="vehicle-specs.js"></script>
+<script src="vehicle-upgrades.js"></script>
 <script>
 "use strict";
 
@@ -783,6 +816,8 @@ const freshState = () => ({
   typeFilter: { weapons: "guns", vehicles: "all" },
   /** Gun stats tab: class filter, range, sort, open gun and picked specializations per gun. */
   stats: {},
+  /** Vehicle upgrades tab: type filter, open vehicle and planned picks per vehicle. */
+  vehicleUpgrades: {},
 });
 
 /** Fills in anything a saved state is missing (e.g. a tab added after it was saved). */
@@ -793,6 +828,7 @@ function normalize(s) {
   s.items = { ...fresh.items, ...(s.items || {}) };
   s.typeFilter = { ...fresh.typeFilter, ...(s.typeFilter || {}) };
   s.stats ||= {};
+  s.vehicleUpgrades ||= {};
   s.platoons ||= {};
   s.playerBoards ||= {};
   // The Unknown tier is gone: anyone left in it goes back to the top of Unranked.
@@ -860,19 +896,24 @@ const entity = (id, tab = state.tab) => (tab === "players" ? state.players : sta
 const placedOn = (tab, pid) => new Set([...board(tab, pid).pool, ...board(tab, pid).tiers.flatMap((t) => t.items)]);
 
 function switchTab(tab) {
-  if (!TABS[tab] && tab !== "stats" || tab === state.tab && document.body.dataset.tab === tab) return;
+  if (!TABS[tab] && !TOOL_TABS.includes(tab) || tab === state.tab && document.body.dataset.tab === tab) return;
   state.tab = tab;
-  if (tab !== "stats") state.lastTierTab = tab;
+  if (TABS[tab]) state.lastTierTab = tab;
   save();
   $("#filter").value = "";
   render();
   showTabStatus();
 }
 
-// Top tabs: Tier lists (back to whichever list was open last) and Gun stats.
+/** Top-level tabs that aren't tier lists. */
+const TOOL_TABS = ["stats", "veh"];
+/** Which top tab a tab belongs to (every tier list sits under "tiers"). */
+const topTab = (tab = state.tab) => (TOOL_TABS.includes(tab) ? tab : "tiers");
+
+// Top tabs: Tier lists (back to whichever list was open last), Gun stats, Vehicle upgrades.
 $("#tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-top]");
-  if (b) switchTab(b.dataset.top === "stats" ? "stats" : state.lastTierTab || "players");
+  if (b) switchTab(b.dataset.top === "tiers" ? state.lastTierTab || "players" : b.dataset.top);
 });
 $("#subtabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-tab]");
@@ -882,6 +923,7 @@ $("#subtabs").addEventListener("click", (e) => {
 function showTabStatus() {
   if (state.tab === "players") return showCount();
   if (state.tab === "stats") return setStatus(window.GunStats ? GunStats.status() : "Couldn't load the gun stats (gun-stats.js is missing next to index.html).");
+  if (state.tab === "veh") return setStatus(window.VehicleUpgrades ? VehicleUpgrades.status() : "Couldn't load the vehicle upgrades (vehicle-upgrades.js is missing next to index.html).");
   const all = Object.keys(state.items[state.tab]).length;
   const ranked = board().tiers.reduce((n, t) => n + t.items.length, 0);
   setStatus(all ? `${ranked} of ${all} ${TABS[state.tab].noun} ranked` : `Couldn't load the ${TABS[state.tab].noun} list (catalog.js is missing next to index.html).`);
@@ -1208,7 +1250,7 @@ function renderPlatoon() {
 
 /** Slides the tab underline to the open tab (it animates via CSS; the first placement doesn't). */
 function moveTabIndicator() {
-  const active = document.querySelector(`#tabs button[data-top="${state.tab === "stats" ? "stats" : "tiers"}"]`);
+  const active = document.querySelector(`#tabs button[data-top="${topTab()}"]`);
   const bar = $(".tab-indicator");
   if (!active || !bar) return;
   if (!bar.dataset.placed) bar.style.transition = "none";
@@ -1227,13 +1269,17 @@ function render() {
   document.body.dataset.tab = state.tab;
   fillTypeFilter();
   for (const b of document.querySelectorAll("#tabs button")) {
-    b.classList.toggle("active", b.dataset.top === (state.tab === "stats" ? "stats" : "tiers"));
+    b.classList.toggle("active", b.dataset.top === topTab());
   }
   for (const b of document.querySelectorAll("#subtabs button")) b.classList.toggle("active", b.dataset.tab === state.tab);
   refreshTabCounts(false);
   moveTabIndicator();
   if (state.tab === "stats") {
     window.GunStats?.render($("#gunStats"), state.stats, save, showTabStatus);
+    return;
+  }
+  if (state.tab === "veh") {
+    window.VehicleUpgrades?.render($("#vehUpgrades"), state.vehicleUpgrades, save);
     return;
   }
   $("#filter").placeholder = TABS[state.tab].filter;

@@ -7,6 +7,8 @@ Drag-and-drop tier lists and gun stats for Battlefield V:
 - **Gun stats**: every gun's datamined stats (time to kill, fire rate, velocity, recoil, spread,
   reload), with an interactive damage chart and the specialization tree. Stats datamined by
   [sym.gg](https://sym.gg).
+- **Vehicle upgrades**: every tank and plane's specialization tree and what each upgrade does, to
+  plan a build. Upgrade lists from the [Battlefield wiki](https://battlefield.fandom.com/wiki/Specializations_(Battlefield_V)/Vehicles).
 
 Add notes to any card (double-click), rename / recolor / reorder tiers, and save a tier list as a PNG.
 Everything is saved in your browser's local storage: nothing is uploaded anywhere.
