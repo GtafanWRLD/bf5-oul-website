@@ -31,7 +31,21 @@ window.GunStats = (() => {
 
   // ---------- maths ----------
 
-  const resolve = (w, combo) => (combo && w.variants[combo] ? { ...w.base, ...w.variants[combo] } : w.base);
+  /**
+   * Whether a path through the tree exists. sym stores every valid path, except that a last-tier
+   * spec that changes no stats (the Garand's bayonet) is sometimes stored on only one branch.
+   */
+  function validPath(w, codes) {
+    if (!codes.length) return true;
+    if (w.variants[codes.join("+")]) return true;
+    return codes.length === w.tree?.length && w.cosmetic?.includes(codes.at(-1)) && validPath(w, codes.slice(0, -1));
+  }
+  function resolve(w, combo) {
+    const codes = combo ? combo.split("+") : [];
+    // A path sym didn't store can only end in no-stat specs; its stats are the path before them.
+    while (codes.length && !w.variants[codes.join("+")]) codes.pop();
+    return codes.length ? { ...w.base, ...w.variants[codes.join("+")] } : w.base;
+  }
 
   /** Damage of one projectile at distance d, linear between the datamined points. */
   function damageAt(s, d) {
@@ -440,7 +454,7 @@ window.GunStats = (() => {
       if (justOpened === w.name) d.classList.add("enter");
       item.append(d);
       // The chart needs its width, so it's drawn once the panel is in the page.
-      queueMicrotask(() => d.querySelector(".gs-chart")?.draw());
+      queueMicrotask(() => { d.querySelector(".gs-chart")?.draw(); d.querySelector(".gs-specs")?.drawLines?.(); });
     }
     return item;
   }
@@ -543,7 +557,26 @@ window.GunStats = (() => {
     return g;
   }
 
-  /** The four specialization tiers. Each pick narrows what the next tier offers, like in game. */
+  /** Why a spec has no numbers here: what it does in game that the datamine doesn't record. */
+  const NO_DATA = {
+    MoAD: "Faster movement while aiming. sym.gg's datamine doesn't record this.",
+    Flas: "Hides the muzzle flash. Visual only.",
+    Cool: "Slower overheating. sym.gg's datamine doesn't record this.",
+    Bayo: "Bayonet charge. Doesn't change the gun's stats.",
+    Bipo: "Bipod. Its stability isn't in sym.gg's datamine.",
+    IBip: "Steadier bipod. Its stability isn't in sym.gg's datamine.",
+    Zero: "Adjustable scope zeroing. Doesn't change the gun's stats.",
+    GLau: "Rifle grenades. Doesn't change the gun's stats.",
+    Gren: "Better rifle grenades. Doesn't change the gun's stats.",
+    HiPo: "Higher-zoom scopes. Doesn't change the gun's stats.",
+    QRel: "Faster reloads, but this gun's reload times aren't in sym.gg's datamine.",
+  };
+
+  /**
+   * The specialization tree, laid out and wired like the in-game one: four tiers, each a free pick,
+   * except tier 3, which follows the side picked in tier 2. Lines show which nodes connect; the
+   * picked path is lit.
+   */
   function specTree(w) {
     const box = h("section", "gs-specs");
     const head = h("div", "gs-specs-head");
@@ -558,36 +591,102 @@ window.GunStats = (() => {
     }
     box.append(head);
 
-    const keys = Object.keys(w.variants).map((k) => k.split("+"));
-    if (!keys.length) {
+    const tree = w.tree || [];
+    if (!tree.length) {
       box.append(h("p", "muted", "Sidearms have no specializations."));
       return box;
     }
-    const depth = Math.max(...keys.map((k) => k.length));
-    for (let i = 0; i < depth; i++) {
-      // Options at tier i given the picks before it; later tiers preview what the first pick unlocks.
-      const prefix = sel.slice(0, Math.min(i, sel.length));
-      const opts = [...new Set(keys.filter((k) => k.length > i && prefix.every((c, j) => k[j] === c)).map((k) => k[i]))];
-      const locked = i > sel.length;
-      const tier = h("div", "gs-tier");
-      tier.append(h("span", "gs-tier-n", String(i + 1)));
-      for (const code of opts.slice(0, 2)) {
-        const b = h("button", "gs-spec", w.specNames[code] || code);
-        b.type = "button";
-        b.disabled = locked;
+
+    // Which node connects to which in the next tier, from every valid path.
+    const edges = new Set();
+    for (const k of Object.keys(w.variants)) {
+      const c = k.split("+");
+      for (let i = 0; i + 1 < c.length; i++) edges.add(`${i}:${c[i]}>${c[i + 1]}`);
+    }
+    const last = tree.length - 1;
+    for (const b of tree[last] || []) if (last > 0 && w.cosmetic?.includes(b)) for (const a of tree[last - 1]) edges.add(`${last - 1}:${a}>${b}`);
+
+    const wrap = h("div", "gs-tree");
+    const svg = s$("svg", { class: "gs-tree-lines", "aria-hidden": "true" });
+    wrap.append(svg);
+    const nodes = new Map();
+    tree.forEach((options, i) => {
+      const row = h("div", "gs-tier");
+      row.append(h("span", "gs-tier-n", String(i + 1)));
+      const opts = h("div", "gs-tier-opts");
+      opts.style.setProperty("--n", options.length);
+      for (const code of options) {
         const on = sel[i] === code;
+        const reachable = i <= sel.length && validPath(w, [...sel.slice(0, i), code]);
+        const b = h("button", "gs-spec");
+        b.type = "button";
+        b.append(h("span", "", w.specNames[code] || code));
         b.setAttribute("aria-pressed", String(on));
-        b.title = locked ? `Pick tier ${sel.length + 1} first` : on ? "Click to remove" : "";
+        const noData = w.cosmetic?.includes(code);
+        if (noData) {
+          b.classList.add("no-data");
+          b.append(h("span", "gs-spec-note", "no stat data"));
+        }
+        let tip = noData ? NO_DATA[code] || "Changes none of the stats in sym.gg's datamine." : "";
+        if (i > sel.length) {
+          b.disabled = true;
+          b.classList.add("ahead");
+          tip = `Pick tier ${sel.length + 1} first. ${tip}`;
+        } else if (!reachable) {
+          b.disabled = true;
+          b.classList.add("locked");
+          const via = tree[i - 1]?.find((p) => edges.has(`${i - 1}:${p}>${code}`));
+          tip = `Only after ${w.specNames[via] || "the other branch"}. ${tip}`;
+        } else if (on) {
+          tip = `Click to remove. ${tip}`;
+        }
+        b.title = tip.trim();
         b.addEventListener("click", () => {
           if (on) return setCombo(w, sel.slice(0, i));
           const next = [...sel.slice(0, i), code, ...sel.slice(i + 1)];
-          while (next.length && !w.variants[next.join("+")]) next.pop();
-          setCombo(w, next.length ? next : [code]);
+          // Keep the later picks where possible: a tier-3 pick moves to the new branch's node.
+          for (let j = i + 1; j < next.length; j++) {
+            const ok = tree[j].filter((c) => validPath(w, [...next.slice(0, j), c]));
+            if (ok.includes(next[j])) continue;
+            if (ok.length === 1 && j === 2) next[j] = ok[0];
+            else { next.length = j; break; }
+          }
+          setCombo(w, next);
         });
-        tier.append(b);
+        nodes.set(`${i}:${code}`, b);
+        opts.append(b);
       }
-      box.append(tier);
-    }
+      row.append(opts);
+      wrap.append(row);
+    });
+    box.append(wrap);
+
+    // Lines are drawn from the laid-out node positions, so they wait until the tree is in the page.
+    box.drawLines = () => {
+      if (!wrap.isConnected) return;
+      const origin = wrap.getBoundingClientRect();
+      svg.setAttribute("width", origin.width);
+      svg.setAttribute("height", origin.height);
+      svg.innerHTML = "";
+      const lit = [], open = [], rest = [];
+      for (const e of edges) {
+        const [, i, a, b] = e.match(/^(\d+):(.+)>(.+)$/);
+        const from = nodes.get(`${i}:${a}`), to = nodes.get(`${+i + 1}:${b}`);
+        if (!from || !to) continue;
+        const r1 = from.getBoundingClientRect(), r2 = to.getBoundingClientRect();
+        const x1 = r1.left + r1.width / 2 - origin.left, y1 = r1.bottom - origin.top;
+        const x2 = r2.left + r2.width / 2 - origin.left, y2 = r2.top - origin.top;
+        const my = (y1 + y2) / 2;
+        const d = `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
+        const picked = sel[i] === a;
+        (picked && sel[+i + 1] === b ? lit : picked && +i + 1 === sel.length ? open : rest).push(d);
+      }
+      // Dim lines first so the lit path draws on top.
+      for (const [list, cls] of [[rest, "dim"], [open, "open"], [lit, "lit"]]) {
+        for (const d of list) svg.append(s$("path", { d, class: cls }));
+      }
+    };
+    new ResizeObserver(() => box.drawLines()).observe(wrap);
     return box;
   }
 

@@ -394,11 +394,21 @@
   .gs-specs, .gs-chart, .gs-group { padding: 14px; border-radius: var(--radius-m); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); min-width: 0; }
   .gs-specs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; margin-bottom: 10px; }
   .gs-reset { min-height: 28px; padding: 0 10px; font-size: 13px; }
-  .gs-tier { display: grid; grid-template-columns: 18px 1fr 1fr; align-items: stretch; gap: 6px; margin-top: 6px; }
-  .gs-tier-n { align-self: center; color: var(--muted); font: 700 14px/1 var(--font-display); text-align: center; }
+  /* Spec tree: nodes sit on top of an SVG of connecting lines, like the in-game tree. */
+  .gs-tree { position: relative; display: flex; flex-direction: column; gap: 22px; }
+  .gs-tree-lines { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  .gs-tree-lines path { fill: none; stroke-width: 1.5; }
+  .gs-tree-lines .dim { stroke: var(--line); }
+  .gs-tree-lines .open { stroke: rgb(240 167 58 / .45); stroke-dasharray: 3 3; }
+  .gs-tree-lines .lit { stroke: var(--accent); stroke-width: 2.5; }
+  .gs-tier { position: relative; display: grid; grid-template-columns: 18px 1fr; align-items: center; gap: 6px; }
+  .gs-tier-n { color: var(--muted); font: 700 14px/1 var(--font-display); text-align: center; }
+  .gs-tier-opts { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 8px; }
   .gs-spec {
-    min-height: 44px; padding: 6px 8px; border: 0; border-radius: var(--radius-s); background: var(--surface-2);
-    color: var(--text); font-size: 13px; font-weight: 500; line-height: 1.2; text-wrap: balance;
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    min-height: 46px; padding: 6px 6px; border: 0; border-radius: var(--radius-s);
+    /* Opaque so the lines pass behind the node, not through it. */
+    background: var(--surface-2); color: var(--text); font-size: 13px; font-weight: 500; line-height: 1.2; text-wrap: balance; text-align: center;
     box-shadow: inset 0 0 0 1px var(--line);
     transition-property: background-color, color, box-shadow, scale, opacity;
     transition-duration: var(--duration-quick);
@@ -406,8 +416,13 @@
   }
   .gs-spec:hover:not(:disabled) { background: var(--surface-3); }
   .gs-spec:active:not(:disabled) { scale: .96; }
-  .gs-spec[aria-pressed="true"] { background: rgb(240 167 58 / .16); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
-  .gs-spec:disabled { opacity: .4; cursor: not-allowed; }
+  .gs-spec[aria-pressed="true"] { background: #3a2d17; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
+  .gs-spec:disabled { cursor: not-allowed; }
+  /* Not reachable yet: still readable, like the in-game preview of later tiers. */
+  .gs-spec.ahead { color: var(--muted); }
+  /* The other branch of tier 3: closed off by the tier-2 pick. */
+  .gs-spec.locked { color: var(--muted); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); opacity: .55; }
+  .gs-spec-note { font-size: 10.5px; font-weight: 500; color: var(--muted); letter-spacing: .02em; }
 
   .gs-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; margin-bottom: 8px; }
   .gs-legend { display: flex; gap: 14px; color: var(--muted); font-size: 12.5px; }
