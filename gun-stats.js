@@ -1,9 +1,9 @@
 "use strict";
 
 /**
- * The Gun stats tab: every BFV gun's datamined stats (weapon-stats.js, from sym.gg) as a sortable
- * table, with a per-gun detail panel holding an interactive damage / shots / time-to-kill chart and
- * the specialization tree.
+ * The Gun stats tab: every BFV gun's datamined stats (weapon-stats.js, from sym.gg), grouped like
+ * the in-game loadout screen (class, then weapon type), with a per-gun detail panel holding an
+ * interactive damage / shots / time-to-kill chart and the specialization tree.
  *
  * Unlike sym's chart page, values here are derived from the selected specialization combo as a
  * whole, so specs that only change a multiplier still show up: Quick Reload scales reload times
@@ -13,6 +13,21 @@ window.GunStats = (() => {
   const DATA = window.WEAPON_STATS;
   const MAX_RANGE = 150;
   const CLASSES = ["Assault", "Medic", "Support", "Recon", "Sidearm"];
+  /** Weapon types per class in loadout-screen order, with their plural group names. */
+  const TYPES = [
+    ["Assault rifle", "Assault rifles"], ["Semi-auto rifle", "Semi-auto rifles"],
+    ["Smg", "Submachine guns"], ["Bolt action carbine", "Bolt-action carbines"],
+    ["Lmg", "Light machine guns"], ["Mmg", "Medium machine guns"], ["Shotgun", "Shotguns"],
+    ["Bolt action rifle", "Bolt-action rifles"], ["Self-loading rifle", "Self-loading rifles"],
+    ["Pistol carbine", "Pistol carbines"], ["Anti-materiel rifle", "Anti-materiel rifles"],
+    ["Sidearm", "Sidearms"],
+  ];
+  const TYPE_ORDER = TYPES.map(([t]) => t);
+  const TYPE_PLURAL = Object.fromEntries(TYPES);
+  const TYPE_SINGULAR = { Smg: "SMG", Lmg: "LMG", Mmg: "MMG", "Bolt action carbine": "Bolt-action carbine", "Bolt action rifle": "Bolt-action rifle" };
+  const typeOf = (w) => w.type || w.cls;
+  /** Group order; Recon's lone semi-auto (M3 Infrared) sits after its self-loading rifles. */
+  const typeRank = (w) => (w.cls === "Recon" && typeOf(w) === "Semi-auto rifle" ? TYPE_ORDER.indexOf("Self-loading rifle") + .5 : TYPE_ORDER.indexOf(typeOf(w)));
 
   // ---------- maths ----------
 
@@ -63,21 +78,55 @@ window.GunStats = (() => {
   }
   const hasReload = (s) => Object.values(reload(s)).some((v) => v != null);
   const reloadTime = (s) => { const r = reload(s); return r.tactical ?? r.clip ?? null; };
-  const prettyAmmo = (a) => (a || "").replace(/_/g, " ").replace(/(\d)x(\d)/g, "$1×$2");
+
+  // ---------- ammo names ----------
+
+  /** The datamine's ammo ids (e.g. "Mauser792x57mm_HighROF_Fast") → cartridge names, by prefix. */
+  const CALIBERS = [
+    [/^12g_Slug/, "12 gauge slug"], [/^12g_Buckshot/, "12 gauge buckshot"],
+    [/^30-06/, ".30-06 Springfield"], [/^(303_British|British303)/, ".303 British"], [/^30_Carbine/, ".30 Carbine"],
+    [/^32ACP/, ".32 ACP"], [/^351Winchester/, ".351 Winchester"], [/^357Magnum/, ".357 Magnum"],
+    [/^35Remington/, ".35 Remington"], [/^455Webley/, ".455 Webley"], [/^45(ACP|cal)/, ".45 ACP"],
+    [/^55Boys/, ".55 Boys"], [/^75x54mm/, "7.5×54mm French"], [/^75x55/, "7.5×55mm Swiss"],
+    [/^75x57mm/, "7.5×57mm French"], [/^762x53mmR/, "7.62×53mmR"], [/^77x58mm/, "7.7×58mm Arisaka"],
+    [/^792x33mm/, "7.92×33mm Kurz"], [/^792x94mm/, "7.92×94mm Patrone"], [/^8mmLebel/, "8mm Lebel"],
+    [/^8mmRibeyrolles/, "8mm Ribeyrolles"], [/^8x22mm/, "8×22mm Nambu"], [/^8x56mmR/, "8×56mmR"],
+    [/^9mm_Export/, "9×25mm Mauser"], [/^(9x19mm|Welgun)/, "9×19mm Parabellum"], [/^9x23mm/, "9×23mm Largo"],
+    [/^Carcano65x52mm/, "6.5×52mm Carcano"], [/^Mauser65x55mm/, "6.5×55mm Swedish"],
+    [/^Mauser792x57mm/, "7.92×57mm Mauser"], [/^Mauser7x57mm/, "7×57mm Mauser"],
+  ];
+  /** Suffixes that a specialization adds; the rest (HighROF, Semi, MMG…) are internal variants. */
+  const AMMO_TAGS = [
+    [/Incendiary/, "incendiary"], [/APCR/, "APCR"], [/(LowDrag|LongRange)/, "low drag"],
+    [/(_Fast|Aero)/, "high velocity"], [/Buckshot.*Improved/, "penetrating"], [/Slug.*Improved/, "solid slug"],
+    [/^(?!12g).*Improved/, "improved"], [/MarkII/, "Mk II"], [/Sup+ressed/, "suppressed"],
+  ];
+  function ammoName(id) {
+    if (!id) return null;
+    const cal = CALIBERS.find(([re]) => re.test(id))?.[1] || id.replace(/_/g, " ");
+    const tags = AMMO_TAGS.filter(([re]) => re.test(id)).map(([, t]) => t);
+    return [cal, ...tags].join(" · ");
+  }
 
   // ---------- what's shown ----------
 
-  /** Table columns. `better` says which end of the range fills the meter. */
+  const ms = (v) => Math.round(v);
+  /** Table columns. `better` says which end of the range fills the meter and sorts first. */
   const COLUMNS = [
-    { key: "btk", label: "BTK", title: "Body shots to kill at the chosen range (all pellets hitting)", better: "low", get: (s, r) => btk(s, r), fmt: (v) => v },
-    { key: "ttk", label: "TTK", unit: "ms", title: "Time to kill at the chosen range, excluding bullet travel", better: "low", get: (s, r) => ttk(s, r), fmt: (v) => Math.round(v) },
+    { key: "dmg", label: "Damage", title: "Damage per shot, close range → long range", better: "high", get: (s) => shotDamage(s, 0) },
     { key: "rpm", label: "RPM", title: "Rate of fire", better: "high", get: (s) => s.RoF, fmt: (v) => v },
+    { key: "ttk10", label: "TTK 10 m", unit: "ms", title: "Time to kill at 10 m with body shots (bullet travel not included)", better: "low", get: (s) => ttk(s, 10), fmt: ms },
+    { key: "ttk50", label: "TTK 50 m", unit: "ms", title: "Time to kill at 50 m with body shots (bullet travel not included)", better: "low", get: (s) => ttk(s, 50), fmt: ms },
     { key: "vel", label: "Velocity", unit: "m/s", title: "Muzzle velocity", better: "high", get: (s) => s.InitialSpeed, fmt: (v) => v },
     { key: "mag", label: "Mag", title: "Magazine size", better: "high", get: (s) => s.MagSize, fmt: (v) => v },
     { key: "reload", label: "Reload", unit: "s", title: "Reload with rounds left (stripper-clip reload for bolt-actions)", better: "low", get: (s) => reloadTime(s), fmt: (v) => v.toFixed(2) },
   ];
+  const SORTS = [
+    ["name", "Name"], ["dmg", "Damage"], ["rpm", "Fire rate"], ["ttk10", "Time to kill, 10 m"], ["ttk50", "Time to kill, 50 m"],
+    ["vel", "Bullet velocity"], ["mag", "Magazine size"], ["reload", "Reload time"],
+  ];
 
-  /** Detail panel stat groups: [label, getter, unit, better, decimals, help]. */
+  /** Detail panel stat groups: [label, getter, unit, better, decimals, help]. Text getters have no unit. */
   const GROUPS = [
     ["Handling", [
       ["Deploy time", (s) => s.DeployTime, "s", "low", 2, "Time to bring the gun up after switching to it."],
@@ -86,7 +135,7 @@ window.GunStats = (() => {
     ]],
     ["Recoil, aimed", [
       ["First-shot kick", (s) => s.ADSStandRecoilInitialUp, "°", "low", 2, "Vertical recoil of the first shot."],
-      ["Climb per shot", (s) => s.ADSStandRecoilUp, "°", "low", 3, "Extra vertical recoil added by each following shot."],
+      ["Climb per shot", (s) => s.ADSStandRecoilUp, "°", "abs", 3, "Extra vertical recoil added by each following shot (negative pulls the sights down)."],
       ["Horizontal", (s) => Math.max(s.ADSStandRecoilLeft, s.ADSStandRecoilRight), "°", "low", 3, "Largest sideways kick per shot."],
       ["Recovery", (s) => s.ADSStandRecoilDecFactor, "", "high", 1, "How fast the sights return after a shot."],
     ]],
@@ -107,13 +156,13 @@ window.GunStats = (() => {
       ["Pellets", (s) => (s.ShotsPerShell > 1 ? s.ShotsPerShell : null), "", null, 0, "Projectiles per shot."],
     ]],
     ["Ammo and reload", [
+      ["Ammo", (s) => ammoName(s.Ammo), "", null, 0, "Cartridge. Penetration, headshot, incendiary and bullet specs swap it."],
       ["Magazine", (s) => s.MagSize, "", "high", 0, "Rounds per magazine."],
       ["Reload, rounds left", (s) => reload(s).tactical, "s", "low", 2, "Reload with rounds still in the magazine. Includes Quick Reload's speed-up."],
       ["Reload, empty", (s) => reload(s).empty, "s", "low", 2, "Reload from empty. Includes Quick Reload's speed-up."],
       ["Stripper clip", (s) => reload(s).clip, "s", "low", 2, "Reload a full clip from empty."],
       ["Per round", (s) => reload(s).perRound, "s", "low", 2, "Time to load each single round or shell."],
-      ["Reload", (s) => (hasReload(s) ? null : "Not in the datamine"), "", null, 0, "sym.gg's data has no reload times for this gun."],
-      ["Ammo", (s) => prettyAmmo(s.Ammo), "", null, 0, "Ammo type. Penetration, headshot and incendiary specs swap this."],
+      ["Reload", (s) => (hasReload(s) ? null : "No data"), "", null, 0, "sym.gg's datamine has no reload times for this gun."],
     ]],
   ];
 
@@ -152,25 +201,33 @@ window.GunStats = (() => {
     else m.style.setProperty("--fill", `${Math.max(.04, fill) * 100}%`);
     return m;
   }
+  const round1 = (v) => (Math.round(v * 10) / 10).toString();
+  const fmtNum = (v, dec) => {
+    const r = v.toFixed(dec);
+    // Trim trailing zeros on the finer stats (0.150 → 0.15) but keep integers as they are.
+    return dec > 1 ? r.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "") : r;
+  };
+  const fmtDmg = (s, d) => {
+    const one = damageAt(s, d);
+    return s.ShotsPerShell > 1 ? `${round1(one * s.ShotsPerShell)} dmg (${s.ShotsPerShell} × ${round1(one)})` : `${round1(one)} dmg`;
+  };
 
   // ---------- state ----------
 
-  let root, prefs, onChange, onRangeChange;
+  let root, prefs, onChange;
   let justOpened = null;
   const combo = (w) => prefs.specs[w.name] || "";
   const current = (w) => resolve(w, combo(w));
   const changed = () => onChange && onChange();
 
   /** Draws the tab into `container`. `p` is the saved prefs object (mutated in place); `cb` saves it. */
-  function render(container, p, cb, rangeCb) {
+  function render(container, p, cb) {
     root = container;
     prefs = p;
     onChange = cb;
-    onRangeChange = rangeCb;
     prefs.cls ||= "all";
     prefs.q ??= "";
-    prefs.range ??= 25;
-    prefs.sort ||= { key: "ttk", dir: 1 };
+    if (!prefs.sort || !SORTS.some(([k]) => k === prefs.sort.key)) prefs.sort = { key: "name", dir: 1 };
     prefs.specs ||= {};
     prefs.chart ||= "damage";
     if (!DATA) {
@@ -183,9 +240,7 @@ window.GunStats = (() => {
     renderList();
   }
 
-  function status() {
-    return DATA ? `${DATA.weapons.length} guns · stats at ${prefs?.range ?? 25} m` : "Gun stats unavailable";
-  }
+  const status = () => (DATA ? `${DATA.weapons.length} guns · datamined stats, every specialization` : "Gun stats unavailable");
 
   // ---------- toolbar ----------
 
@@ -195,7 +250,19 @@ window.GunStats = (() => {
 
     const bar = h("div", "gs-toolbar");
 
-    const search = h("label", "search-field");
+    const seg = h("div", "gs-seg");
+    seg.id = "gsClass";
+    seg.setAttribute("role", "group");
+    seg.setAttribute("aria-label", "Class");
+    for (const c of ["all", ...CLASSES]) {
+      const b = h("button", "", c === "all" ? "All" : c === "Sidearm" ? "Sidearms" : c);
+      b.type = "button";
+      b.dataset.cls = c;
+      b.addEventListener("click", () => { prefs.cls = c; changed(); syncControls(); renderList(); });
+      seg.append(b);
+    }
+
+    const search = h("label", "search-field gs-search");
     search.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
     const q = h("input", "field");
     q.type = "search";
@@ -205,42 +272,28 @@ window.GunStats = (() => {
     q.addEventListener("input", () => { prefs.q = q.value; changed(); renderList(); });
     search.append(q);
 
-    const seg = h("div", "gs-seg");
-    seg.id = "gsClass";
-    seg.setAttribute("role", "group");
-    seg.setAttribute("aria-label", "Class");
-    for (const c of ["all", ...CLASSES]) {
-      const b = h("button", "", c === "all" ? "All" : c);
-      b.type = "button";
-      b.dataset.cls = c;
-      b.addEventListener("click", () => { prefs.cls = c; changed(); syncControls(); renderList(); });
-      seg.append(b);
+    const sortWrap = h("label", "gs-sortby");
+    sortWrap.append(h("span", "muted", "Sort"));
+    const sel = h("select", "field");
+    sel.id = "gsSort";
+    sel.setAttribute("aria-label", "Sort guns within each group");
+    for (const [k, label] of SORTS) {
+      const o = h("option", "", k === "name" ? "Name (A–Z)" : `${label} (best first)`);
+      o.value = k;
+      sel.append(o);
     }
+    sel.addEventListener("change", () => { prefs.sort = { key: sel.value, dir: 1 }; changed(); renderList(); });
+    sortWrap.append(sel);
 
-    const range = h("label", "gs-range");
-    const rl = h("span", "gs-range-label", "Range");
-    const slider = h("input");
-    slider.type = "range";
-    slider.id = "gsRange";
-    slider.min = 0;
-    slider.max = MAX_RANGE;
-    slider.step = 1;
-    slider.setAttribute("aria-label", "Range for shots and time to kill, in metres");
-    const out = h("output", "gs-range-value");
-    out.id = "gsRangeOut";
-    slider.addEventListener("input", () => setRange(+slider.value));
-    range.append(rl, slider, out);
-
-    bar.append(search, seg, range);
+    bar.append(seg, search, sortWrap);
 
     const table = h("div", "gs-table");
     table.id = "gsTable";
-    table.setAttribute("role", "list");
 
     const note = h("p", "hint");
     note.innerHTML =
-      'Click a gun to open its damage chart and specializations; hover the chart to read any distance, click it to set the range. ' +
-      'Shots and time to kill assume body shots from 100 health with every pellet hitting; time to kill leaves out bullet travel (shown on hover). ' +
+      "Click a gun for its damage chart, specializations and full stats; hover the chart to read any distance. " +
+      "Time to kill assumes body shots from 100 health (every pellet hitting for shotguns) and leaves out bullet travel. " +
       `Meters compare each stat with every stock gun. Stats datamined by <a href="https://sym.gg/legacy/index.html?game=bfv&page=charts" target="_blank" rel="noopener">sym.gg</a>.`;
 
     root.append(bar, table, note);
@@ -250,19 +303,6 @@ window.GunStats = (() => {
     const q = root.querySelector("#gsQuery");
     if (q.value !== prefs.q) q.value = prefs.q;
     for (const b of root.querySelectorAll("#gsClass button")) b.setAttribute("aria-pressed", String(b.dataset.cls === prefs.cls));
-    root.querySelector("#gsRange").value = prefs.range;
-    root.querySelector("#gsRangeOut").textContent = `${prefs.range} m`;
-  }
-
-  let rangeFrame = 0;
-  function setRange(m) {
-    prefs.range = Math.max(0, Math.min(MAX_RANGE, Math.round(m)));
-    root.querySelector("#gsRange").value = prefs.range;
-    root.querySelector("#gsRangeOut").textContent = `${prefs.range} m`;
-    changed();
-    // Slider drags fire faster than a full table redraw is worth.
-    cancelAnimationFrame(rangeFrame);
-    rangeFrame = requestAnimationFrame(() => { renderList(); onRangeChange?.(); });
   }
 
   // ---------- table ----------
@@ -271,31 +311,36 @@ window.GunStats = (() => {
     const q = prefs.q.trim().toLowerCase();
     return DATA.weapons.filter((w) =>
       (prefs.cls === "all" || w.cls === prefs.cls) &&
-      (!q || w.name.toLowerCase().includes(q) || (w.type || "").toLowerCase().includes(q)));
+      (!q || w.name.toLowerCase().includes(q) || typeOf(w).toLowerCase().includes(q) || (TYPE_PLURAL[typeOf(w)] || "").toLowerCase().includes(q)));
   }
 
-  function sortValue(w) {
+  /** Orders guns inside a group: best first for stats, A–Z for names; dir -1 reverses. */
+  function compare(a, b) {
     const k = prefs.sort.key;
-    if (k === "name") return w.name.toLowerCase();
+    if (k === "name") return a.name.localeCompare(b.name) * prefs.sort.dir;
     const col = COLUMNS.find((c) => c.key === k);
-    return col.get(current(w), prefs.range);
+    const va = col.get(current(a)), vb = col.get(current(b));
+    if (va == null && vb == null) return a.name.localeCompare(b.name);
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    const d = (col.better === "high" ? vb - va : va - vb) * prefs.sort.dir;
+    return d || a.name.localeCompare(b.name);
   }
 
   function renderList() {
     const table = root.querySelector("#gsTable");
     const scrollY = window.scrollY;
     table.innerHTML = "";
+    root.querySelector("#gsSort").value = prefs.sort.key;
 
-    // Header
     const head = h("div", "gs-head");
     const headCell = (key, label, title) => {
       const b = h("button", "gs-sort", label);
       b.type = "button";
       b.dataset.col = key;
-      if (title) b.title = title;
+      b.title = `${title}. Click to sort.`;
       const active = prefs.sort.key === key;
       if (active) b.dataset.dir = prefs.sort.dir > 0 ? "best" : "worst";
-      b.setAttribute("aria-sort", active ? (prefs.sort.dir > 0 ? "ascending" : "descending") : "none");
       b.addEventListener("click", () => {
         prefs.sort = { key, dir: active ? -prefs.sort.dir : 1 };
         changed();
@@ -303,119 +348,122 @@ window.GunStats = (() => {
       });
       return b;
     };
-    head.append(headCell("name", "Gun", "Sort by name"), h("span", "gs-spark-head", `Damage · ${prefs.range} m`));
+    head.append(headCell("name", "Gun", "Name"));
     for (const c of COLUMNS) head.append(headCell(c.key, c.label, c.title));
     table.append(head);
 
-    // Domains for the range-dependent columns are taken at the current range.
     const domains = Object.fromEntries(COLUMNS.map((c) => {
-      const vals = DATA.weapons.map((w) => c.get(w.base, prefs.range)).filter((v) => typeof v === "number");
+      const vals = DATA.weapons.map((w) => c.get(w.base)).filter((v) => typeof v === "number");
       return [c.key, [Math.min(...vals), Math.max(...vals)]];
     }));
 
     const list = visible();
-    const col = COLUMNS.find((c) => c.key === prefs.sort.key);
-    list.sort((a, b) => {
-      const va = sortValue(a), vb = sortValue(b);
-      if (va == null && vb == null) return a.name.localeCompare(b.name);
-      if (va == null) return 1;
-      if (vb == null) return -1;
-      let d = typeof va === "string" ? va.localeCompare(vb) : va - vb;
-      // "Best first" means ascending for lower-is-better stats, descending otherwise.
-      if (col?.better === "high") d = -d;
-      return d * prefs.sort.dir || a.name.localeCompare(b.name);
-    });
-
     if (!list.length) {
       table.append(h("p", "gs-empty", "No gun matches that."));
       return;
     }
 
-    for (const w of list) {
-      const s = current(w);
-      const row = h("div", "gs-item");
-      row.setAttribute("role", "listitem");
-      const btn = h("button", "gs-row");
-      btn.type = "button";
-      btn.setAttribute("aria-expanded", String(prefs.open === w.name));
-
-      const gun = h("span", "gs-gun");
-      const thumb = h("span", "gs-thumb");
-      if (w.image) {
-        const img = h("img");
-        img.src = w.image;
-        img.alt = "";
-        img.loading = "lazy";
-        img.onerror = () => img.remove();
-        thumb.append(img);
+    // Grouped like the loadout screen: class, then weapon type.
+    const groups = new Map();
+    for (const cls of CLASSES) {
+      for (const w of list.filter((x) => x.cls === cls).sort((a, b) => typeRank(a) - typeRank(b))) {
+        const key = `${cls}|${typeOf(w)}`;
+        if (!groups.has(key)) groups.set(key, { cls, type: typeOf(w), guns: [] });
+        groups.get(key).guns.push(w);
       }
-      const names = h("span", "gs-names");
-      names.append(h("span", "gs-name", w.name));
-      const sub = h("span", "gs-sub", [w.type || w.cls, w.type ? w.cls : null].filter(Boolean).join(" · "));
-      if (combo(w)) {
-        const n = combo(w).split("+").length;
-        const badge = h("span", "gs-badge", `${n} spec${n > 1 ? "s" : ""}`);
-        badge.title = combo(w).split("+").map((c) => w.specNames[c] || c).join(", ");
-        sub.append(" ", badge);
-      }
-      names.append(sub);
-      gun.append(thumb, names);
-      btn.append(gun, sparkline(s));
-
-      for (const c of COLUMNS) {
-        const v = c.get(s, prefs.range);
-        const cell = h("span", "gs-cell");
-        cell.dataset.col = c.key;
-        const num = h("span", "gs-num", v == null ? "—" : c.fmt(v));
-        if (v != null && c.unit) num.append(h("span", "gs-unit", ` ${c.unit}`));
-        cell.append(num, meter(meterFill(v, domains[c.key], c.better)));
-        btn.append(cell);
-      }
-      btn.addEventListener("click", () => {
-        prefs.open = prefs.open === w.name ? null : w.name;
-        justOpened = prefs.open;
-        changed();
-        renderList();
-      });
-      row.append(btn);
-      if (prefs.open === w.name) {
-        const d = detail(w);
-        // Only opening animates; spec picks and range changes redraw the panel in place.
-        if (justOpened === w.name) d.classList.add("enter");
-        row.append(d);
-      }
-      table.append(row);
-      row.querySelector(".gs-chart")?.draw();
     }
+
+    for (const g of groups.values()) {
+      const gh = h("div", "gs-group-head");
+      if (prefs.cls === "all" && g.cls !== "Sidearm") gh.append(h("span", "gs-group-cls", g.cls));
+      gh.append(h("span", "gs-group-type", TYPE_PLURAL[g.type] || g.type), h("span", "gs-group-n", String(g.guns.length)));
+      table.append(gh);
+      for (const w of g.guns.sort(compare)) table.append(row(w, domains));
+    }
+
     justOpened = null;
     // Re-rendering replaces the rows; keep the page where it was.
     window.scrollTo(0, scrollY);
   }
 
-  /** A tiny damage-over-range curve with a dot at the chosen range. */
-  function sparkline(s) {
-    const W = 120, H = 30, max = Math.max(100, shotDamage(s, 0));
+  function row(w, domains) {
+    const s = current(w);
+    const item = h("div", "gs-item");
+    const btn = h("button", "gs-row");
+    btn.type = "button";
+    btn.setAttribute("aria-expanded", String(prefs.open === w.name));
+
+    const gun = h("span", "gs-gun");
+    const thumb = h("span", "gs-thumb");
+    if (w.image) {
+      const img = h("img");
+      img.src = w.image;
+      img.alt = "";
+      img.loading = "lazy";
+      img.onerror = () => img.remove();
+      thumb.append(img);
+    }
+    const names = h("span", "gs-names");
+    names.append(h("span", "gs-name", w.name));
+    if (combo(w)) {
+      const codes = combo(w).split("+");
+      const sub = h("span", "gs-sub", codes.map((c) => w.specNames[c] || c).join(" · "));
+      names.append(sub);
+    }
+    gun.append(thumb, names);
+    btn.append(gun);
+
+    for (const c of COLUMNS) {
+      const cell = h("span", "gs-cell");
+      cell.dataset.col = c.key;
+      if (c.key === "dmg") {
+        cell.append(damageCell(s));
+      } else {
+        const v = c.get(s);
+        const num = h("span", "gs-num", v == null ? "—" : c.fmt(v));
+        if (v != null && c.unit) num.append(h("span", "gs-unit", ` ${c.unit}`));
+        if (v == null) num.title = "Not in the datamine";
+        cell.append(num, meter(meterFill(v, domains[c.key], c.better)));
+      }
+      btn.append(cell);
+    }
+    btn.addEventListener("click", () => {
+      prefs.open = prefs.open === w.name ? null : w.name;
+      justOpened = prefs.open;
+      changed();
+      renderList();
+    });
+    item.append(btn);
+    if (prefs.open === w.name) {
+      const d = detail(w);
+      // Only opening animates; spec picks redraw the panel in place.
+      if (justOpened === w.name) d.classList.add("enter");
+      item.append(d);
+      // The chart needs its width, so it's drawn once the panel is in the page.
+      queueMicrotask(() => d.querySelector(".gs-chart")?.draw());
+    }
+    return item;
+  }
+
+  /** Close → far damage, with a tiny damage-over-range curve. */
+  function damageCell(s) {
+    const near = shotDamage(s, 0), far = shotDamage(s, MAX_RANGE);
+    const wrap = h("span", "gs-dmg");
+    const num = h("span", "gs-num", round1(near));
+    if (Math.abs(far - near) > .05) num.append(h("span", "gs-unit", ` → ${round1(far)}`));
+    wrap.append(num);
+
+    const W = 96, H = 18, max = Math.max(100, near);
     const x = (d) => (d / MAX_RANGE) * W;
-    const y = (v) => H - 2 - (Math.min(v, max) / max) * (H - 4);
+    const y = (v) => H - 1 - (Math.min(v, max) / max) * (H - 2);
     let path = "";
     for (let d = 0; d <= MAX_RANGE; d += 3) path += `${d ? "L" : "M"}${x(d).toFixed(1)},${y(shotDamage(s, d)).toFixed(1)}`;
     const svg = s$("svg", { viewBox: `0 0 ${W} ${H}`, class: "gs-spark", "aria-hidden": "true" });
-    svg.append(
-      s$("path", { d: `${path}L${W},${H}L0,${H}Z`, class: "area" }),
-      s$("path", { d: path, class: "line" }),
-      s$("circle", { cx: x(prefs.range), cy: y(shotDamage(s, prefs.range)), r: 2.5, class: "dot" }),
-    );
-    const wrap = h("span", "gs-spark-wrap");
-    wrap.title = `${fmtDmg(s, prefs.range)} at ${prefs.range} m`;
+    svg.append(s$("path", { d: `${path}L${W},${H}L0,${H}Z`, class: "area" }), s$("path", { d: path, class: "line" }));
     wrap.append(svg);
+    wrap.title = `${fmtDmg(s, 0)} up close, ${fmtDmg(s, MAX_RANGE)} at ${MAX_RANGE} m`;
     return wrap;
   }
-
-  const fmtDmg = (s, d) => {
-    const one = damageAt(s, d);
-    return s.ShotsPerShell > 1 ? `${round1(one * s.ShotsPerShell)} dmg (${s.ShotsPerShell} × ${round1(one)})` : `${round1(one)} dmg`;
-  };
-  const round1 = (v) => (Math.round(v * 10) / 10).toString();
 
   // ---------- detail panel ----------
 
@@ -439,19 +487,30 @@ window.GunStats = (() => {
         const dt = h("dt", "", label);
         dt.title = help;
         const dd = h("dd");
-        const val = h("span", "gs-val", typeof v === "number" ? fmtNum(v, dec) : v);
-        if (unit && typeof v === "number") val.append(h("span", "gs-unit", unit === "×" || unit === "°" ? unit : ` ${unit}`));
-        dd.append(val);
-        // Changed by the selected specs: show the stock value and whether it's better or worse.
-        const differs = typeof v === "number" ? Math.abs(v - stock) > 1e-9 : v !== stock;
-        if (differs) {
-          const was = h("span", "gs-was", typeof stock === "number" ? fmtNum(stock, dec) : stock ?? "none");
-          was.title = "Stock value";
-          dd.append(was);
-          if (typeof v === "number" && better) dd.classList.add((better === "low" ? v < stock : v > stock) ? "better" : "worse");
-          else dd.classList.add("changed");
+        if (typeof v === "number") {
+          const val = h("span", "gs-val", fmtNum(v, dec));
+          if (unit) val.append(h("span", "gs-unit", unit === "×" || unit === "°" ? unit : ` ${unit}`));
+          dd.append(val);
+          // Changed by the selected specs: show the stock value and whether it's better or worse.
+          if (typeof stock === "number" && Math.abs(v - stock) > 1e-9) {
+            const was = h("span", "gs-was", fmtNum(stock, dec));
+            was.title = "Stock value";
+            dd.append(was);
+            const improved = better === "abs" ? Math.abs(v) < Math.abs(stock) : better === "low" ? v < stock : v > stock;
+            if (better) dd.classList.add(improved ? "better" : "worse");
+          }
+          // "abs" stats (recoil climb can be negative) are judged by size.
+          const abs = better === "abs";
+          dd.append(meter(meterFill(abs ? Math.abs(v) : v, domain(label, abs ? (x) => Math.abs(get(x)) : get), abs ? "low" : better)));
+        } else {
+          // Text (ammo, missing data) gets the full width and wraps normally.
+          dd.classList.add("text");
+          dd.append(h("span", "gs-val", v));
+          if (stock !== v) {
+            dd.classList.add("changed");
+            dd.append(h("span", "gs-was-text", `Stock: ${stock ?? "none"}`));
+          }
         }
-        if (typeof v === "number") dd.append(meter(meterFill(v, domain(label, get), better)));
         dl.append(dt, dd);
       }
       g.append(dl);
@@ -461,12 +520,6 @@ window.GunStats = (() => {
     panel.append(groups);
     return panel;
   }
-
-  const fmtNum = (v, dec) => {
-    const r = v.toFixed(dec);
-    // Trim trailing zeros on the finer stats (0.150 → 0.15) but keep integers as they are.
-    return dec > 1 ? r.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "") : r;
-  };
 
   /** Stand / crouch / prone spread, aimed and from the hip, still and moving. */
   function spreadTable(w, s) {
@@ -516,8 +569,8 @@ window.GunStats = (() => {
       const prefix = sel.slice(0, Math.min(i, sel.length));
       const opts = [...new Set(keys.filter((k) => k.length > i && prefix.every((c, j) => k[j] === c)).map((k) => k[i]))];
       const locked = i > sel.length;
-      const row = h("div", "gs-tier");
-      row.append(h("span", "gs-tier-n", String(i + 1)));
+      const tier = h("div", "gs-tier");
+      tier.append(h("span", "gs-tier-n", String(i + 1)));
       for (const code of opts.slice(0, 2)) {
         const b = h("button", "gs-spec", w.specNames[code] || code);
         b.type = "button";
@@ -531,9 +584,9 @@ window.GunStats = (() => {
           while (next.length && !w.variants[next.join("+")]) next.pop();
           setCombo(w, next.length ? next : [code]);
         });
-        row.append(b);
+        tier.append(b);
       }
-      box.append(row);
+      box.append(tier);
     }
     return box;
   }
@@ -588,18 +641,15 @@ window.GunStats = (() => {
 
     let svg = null;
     function draw() {
+      if (!plot.isConnected) return;
       const mode = MODES[prefs.chart];
       const width = Math.max(260, plot.clientWidth || 560);
       const H = 230, P = { l: 44, r: 14, t: 14, b: 28 };
       const showStock = !sameCurve(mode);
       legend.innerHTML = "";
-      if (showStock) {
-        legend.append(h("span", "key now", "With specs"), h("span", "key stock", "Stock"));
-      }
+      if (showStock) legend.append(h("span", "key now", "With specs"), h("span", "key stock", "Stock"));
       let ymax = 0;
-      for (let d = 0; d <= MAX_RANGE; d++) {
-        ymax = Math.max(ymax, mode.value(s, d), showStock ? mode.value(stock, d) : 0);
-      }
+      for (let d = 0; d <= MAX_RANGE; d++) ymax = Math.max(ymax, mode.value(s, d), showStock ? mode.value(stock, d) : 0);
       ymax = niceMax(ymax * 1.08);
       const x = (d) => P.l + (d / MAX_RANGE) * (width - P.l - P.r);
       const y = (v) => P.t + (1 - v / ymax) * (H - P.t - P.b);
@@ -629,14 +679,9 @@ window.GunStats = (() => {
         lab.textContent = d === MAX_RANGE ? `${d} m` : d;
         svg.append(lab);
       }
-      const area = `${path(s)}L${x(MAX_RANGE)},${y(0)}L${x(0)},${y(0)}Z`;
-      svg.append(s$("path", { d: area, class: "area" }));
+      svg.append(s$("path", { d: `${path(s)}L${x(MAX_RANGE)},${y(0)}L${x(0)},${y(0)}Z`, class: "area" }));
       if (showStock) svg.append(s$("path", { d: path(stock), class: "stock" }));
       svg.append(s$("path", { d: path(s), class: "line" }));
-
-      // The table's range, which a click on the chart moves.
-      const rx = x(prefs.range);
-      svg.append(s$("line", { x1: rx, x2: rx, y1: P.t, y2: H - P.b, class: "range" }));
 
       const hover = s$("g", { class: "hover" });
       const hl = s$("line", { y1: P.t, y2: H - P.b, class: "hline" });
@@ -655,22 +700,21 @@ window.GunStats = (() => {
         hd.setAttribute("cx", x(d)); hd.setAttribute("cy", y(v));
         hover.classList.add("on");
         tip.innerHTML = "";
-        tip.append(h("b", "", `${d} m`), h("span", "", fmtDmg(s, d)), h("span", "", `${btk(s, d)} shot${btk(s, d) > 1 ? "s" : ""} · ${Math.round(ttk(s, d))} ms`));
+        const n = btk(s, d);
+        tip.append(h("b", "", `${d} m`), h("span", "", fmtDmg(s, d)), h("span", "", `${n} shot${n > 1 ? "s" : ""} to kill · ${Math.round(ttk(s, d))} ms`));
         tip.append(h("span", "muted", `+${Math.round(travelMs(s, d))} ms bullet travel`));
         if (showStock) tip.append(h("span", "muted", `Stock: ${mode.fmt(mode.value(stock, d))}`));
         tip.classList.add("on");
-        const left = Math.min(width - tip.offsetWidth - 4, Math.max(4, x(d) + 12));
-        tip.style.translate = `${x(d) + 12 + tip.offsetWidth > width ? x(d) - tip.offsetWidth - 12 : left}px 0`;
+        // Right of the cursor, or left of it near the right edge.
+        const right = x(d) + 12;
+        tip.style.translate = `${right + tip.offsetWidth > width ? x(d) - tip.offsetWidth - 12 : right}px 0`;
       };
       const hide = () => { hover.classList.remove("on"); tip.classList.remove("on"); };
       svg.addEventListener("pointermove", (e) => show(at(e)));
       svg.addEventListener("pointerdown", (e) => show(at(e)));
       svg.addEventListener("pointerleave", hide);
-      svg.addEventListener("click", (e) => setRange(at(e)));
     }
 
-    // Drawn by renderList once the panel is in the page (it needs its width), and again when that
-    // width changes.
     box.draw = draw;
     const ro = new ResizeObserver(() => { if (svg && Math.abs(svg.width.baseVal.value - plot.clientWidth) > 2) draw(); });
     ro.observe(plot);

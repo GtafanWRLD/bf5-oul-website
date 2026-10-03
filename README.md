@@ -1,6 +1,6 @@
-# BF5 Tier List
+# BF5 Tools
 
-Drag-and-drop tier lists for Battlefield V:
+Drag-and-drop tier lists and gun stats for Battlefield V:
 
 - **Players**: search any BF5 platoon and rank its members (with their EA avatars).
 - **Weapons**, **Vehicles**, **Maps**: every one in the game, with in-game pictures.
