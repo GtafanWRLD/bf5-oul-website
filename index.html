@@ -306,6 +306,164 @@
   footer a { color: var(--text); text-underline-offset: 3px; text-decoration-color: rgb(236 235 228 / .35); }
   footer a:hover { text-decoration-color: var(--accent); }
 
+  /* Gun stats */
+  body:not([data-tab="stats"]) .stats-only { display: none !important; }
+  body[data-tab="stats"] .board-area { display: none !important; }
+  .gs-toolbar {
+    display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 14px;
+    padding: 10px; background: var(--surface-1); border-radius: var(--radius-l); box-shadow: var(--shadow-1);
+  }
+  .gs-seg { display: flex; gap: 2px; padding: 3px; border-radius: var(--radius-m); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+  .gs-seg button {
+    min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--radius-s); background: none;
+    color: var(--muted); font-weight: 500; white-space: nowrap;
+    transition-property: background-color, color, scale;
+    transition-duration: var(--duration-quick);
+    transition-timing-function: var(--ease-smooth-out);
+  }
+  .gs-seg button:hover { color: var(--text); }
+  .gs-seg button:active { scale: .96; }
+  .gs-seg button[aria-pressed="true"] { background: var(--surface-3); color: var(--text); box-shadow: var(--shadow-1); }
+  .gs-seg.small button { min-height: 28px; padding: 0 10px; font-size: 13px; }
+  .gs-range { display: flex; align-items: center; gap: 10px; flex: 1 1 260px; min-width: 0; }
+  .gs-range-label { color: var(--muted); font-size: 13px; }
+  .gs-range input { flex: 1; min-width: 0; height: 24px; cursor: pointer; }
+  .gs-range-value { min-width: 54px; text-align: right; font: 700 18px/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--accent); }
+
+  .gs-table { display: flex; flex-direction: column; gap: 2px; }
+  .gs-head, .gs-row {
+    display: grid; align-items: center; gap: 12px;
+    grid-template-columns: minmax(200px, 2.2fr) 124px repeat(6, minmax(58px, 1fr));
+    padding: 0 12px;
+  }
+  .gs-head { position: sticky; top: var(--header-h, 0px); z-index: 2; min-height: 38px; background: var(--bg); box-shadow: 0 1px 0 var(--line); }
+  .gs-sort {
+    display: inline-flex; align-items: center; gap: 4px; justify-self: start; padding: 6px 0; border: 0; background: none;
+    color: var(--muted); font: 600 12px/1 var(--font); letter-spacing: .06em; text-transform: uppercase;
+    transition: color var(--duration-quick) var(--ease-smooth-out);
+  }
+  .gs-sort:hover, .gs-sort[data-dir] { color: var(--text); }
+  .gs-sort[data-dir]::after { content: "↓"; color: var(--accent); }
+  .gs-sort[data-dir="worst"]::after { content: "↑"; }
+  .gs-spark-head { color: var(--muted); font: 600 12px/1 var(--font); letter-spacing: .06em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+
+  .gs-item { border-radius: var(--radius-m); background: var(--surface-1); }
+  .gs-item:has(.gs-detail) { box-shadow: var(--shadow-2); }
+  .gs-row {
+    width: 100%; min-height: 60px; border: 0; border-radius: var(--radius-m); background: none; text-align: left; color: var(--text);
+    transition: background-color var(--duration-quick) var(--ease-smooth-out);
+  }
+  .gs-row:hover { background: var(--surface-2); }
+  .gs-row[aria-expanded="true"] { background: var(--surface-2); border-radius: var(--radius-m) var(--radius-m) 0 0; }
+  .gs-gun { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .gs-thumb {
+    position: relative; width: 84px; height: 44px; flex: 0 0 84px; border-radius: var(--radius-s);
+    background: radial-gradient(90% 80% at 50% 40%, #3a3a33, #24241f);
+  }
+  .gs-thumb::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); }
+  .gs-thumb img { width: 100%; height: 100%; object-fit: contain; padding: 4px 6px; display: block; }
+  .gs-names { display: flex; flex-direction: column; min-width: 0; }
+  .gs-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gs-sub { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gs-badge { padding: 0 6px; border-radius: 999px; background: rgb(240 167 58 / .15); color: var(--accent); font-size: 11.5px; font-weight: 600; }
+  .gs-spark { display: block; width: 120px; height: 30px; overflow: visible; }
+  .gs-spark .line { fill: none; stroke: var(--text); stroke-width: 1.5; opacity: .75; vector-effect: non-scaling-stroke; }
+  .gs-spark .area { fill: rgb(240 167 58 / .1); }
+  .gs-spark .dot { fill: var(--accent); }
+  .gs-cell { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .gs-num { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .gs-unit { color: var(--muted); font-size: 12px; font-weight: 500; }
+  .gs-meter { position: relative; display: block; height: 3px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+  .gs-meter::before {
+    content: ""; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); border-radius: inherit; background: var(--accent);
+    transition: width var(--duration-fast) var(--ease-smooth-out);
+  }
+  .gs-meter.empty { visibility: hidden; }
+  .gs-empty { padding: 48px 16px; text-align: center; color: var(--muted); }
+
+  /* Detail panel */
+  .gs-detail { padding: 16px; }
+  .gs-detail.enter { animation: panel-in var(--duration-slow) var(--ease-smooth-out); }
+  .gs-detail h3 { margin: 0; font: 700 15px/1.2 var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .gs-detail-top { display: grid; grid-template-columns: minmax(240px, 300px) 1fr; gap: 16px; }
+  .gs-specs, .gs-chart, .gs-group { padding: 14px; border-radius: var(--radius-m); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); min-width: 0; }
+  .gs-specs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; margin-bottom: 10px; }
+  .gs-reset { min-height: 28px; padding: 0 10px; font-size: 13px; }
+  .gs-tier { display: grid; grid-template-columns: 18px 1fr 1fr; align-items: stretch; gap: 6px; margin-top: 6px; }
+  .gs-tier-n { align-self: center; color: var(--muted); font: 700 14px/1 var(--font-display); text-align: center; }
+  .gs-spec {
+    min-height: 44px; padding: 6px 8px; border: 0; border-radius: var(--radius-s); background: var(--surface-2);
+    color: var(--text); font-size: 13px; font-weight: 500; line-height: 1.2; text-wrap: balance;
+    box-shadow: inset 0 0 0 1px var(--line);
+    transition-property: background-color, color, box-shadow, scale, opacity;
+    transition-duration: var(--duration-quick);
+    transition-timing-function: var(--ease-smooth-out);
+  }
+  .gs-spec:hover:not(:disabled) { background: var(--surface-3); }
+  .gs-spec:active:not(:disabled) { scale: .96; }
+  .gs-spec[aria-pressed="true"] { background: rgb(240 167 58 / .16); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
+  .gs-spec:disabled { opacity: .4; cursor: not-allowed; }
+
+  .gs-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .gs-legend { display: flex; gap: 14px; color: var(--muted); font-size: 12.5px; }
+  .gs-legend .key { display: inline-flex; align-items: center; gap: 6px; }
+  .gs-legend .key::before { content: ""; width: 16px; height: 0; border-top: 2px solid var(--accent); }
+  .gs-legend .key.stock::before { border-top: 2px dashed var(--muted); }
+  .gs-plot { position: relative; min-width: 0; }
+  .gs-svg { display: block; touch-action: pan-y; cursor: crosshair; }
+  .gs-svg .grid { stroke: var(--line); stroke-width: 1; }
+  .gs-svg .axis { fill: var(--muted); font: 500 11px var(--font); font-variant-numeric: tabular-nums; }
+  .gs-svg .area { fill: rgb(240 167 58 / .08); }
+  .gs-svg .line { fill: none; stroke: var(--accent); stroke-width: 2.25; stroke-linejoin: round; }
+  .gs-svg .stock { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 4; }
+  .gs-svg .range { stroke: var(--text); stroke-width: 1; stroke-dasharray: 2 3; opacity: .45; }
+  .gs-svg .hover { opacity: 0; transition: opacity var(--duration-quick) var(--ease-out, ease-out); pointer-events: none; }
+  .gs-svg .hover.on { opacity: 1; }
+  .gs-svg .hline { stroke: var(--text); stroke-width: 1; opacity: .6; }
+  .gs-svg .hdot { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
+  .gs-tip {
+    position: absolute; top: 8px; left: 0; z-index: 1; display: flex; flex-direction: column; gap: 1px;
+    padding: 8px 10px; border-radius: var(--radius-s); background: var(--surface-3); box-shadow: var(--shadow-2);
+    font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity var(--duration-quick) ease-out;
+  }
+  .gs-tip.on { opacity: 1; }
+  .gs-tip b { font: 700 16px/1.2 var(--font-display); color: var(--accent); }
+  .gs-tip .muted { font-size: 12px; }
+
+  .gs-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+  .gs-group h3 { margin-bottom: 10px; }
+  .gs-group dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 0; align-items: center; }
+  .gs-group dt { color: var(--muted); font-size: 13.5px; cursor: help; text-decoration: underline dotted rgb(166 164 151 / .4); text-underline-offset: 3px; }
+  .gs-group dd { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 2px 8px; margin: 0; min-width: 0; }
+  .gs-group dd .gs-meter { grid-column: 1 / -1; }
+  .gs-val { font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .gs-was { color: var(--muted); font-size: 12.5px; text-decoration: line-through; font-variant-numeric: tabular-nums; }
+  .gs-group dd.better .gs-val, .gs-stance td.better { color: #a8d27e; }
+  .gs-group dd.worse .gs-val, .gs-stance td.worse { color: var(--danger); }
+  .gs-group dd.changed .gs-val { color: var(--accent); }
+  .gs-group dd.better .gs-meter::before { background: #a8d27e; }
+  .gs-group dd.worse .gs-meter::before { background: var(--danger); }
+  .gs-stance { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .gs-stance th { color: var(--muted); font-weight: 500; text-align: left; padding: 4px 6px 4px 0; }
+  .gs-stance thead th { font-size: 12px; }
+  .gs-stance td { padding: 4px 6px 4px 0; font-weight: 600; }
+  .gs-stance tbody tr + tr { box-shadow: 0 -1px 0 var(--line); }
+
+  @media (max-width: 900px) {
+    .gs-head, .gs-row { grid-template-columns: minmax(150px, 1fr) repeat(3, 64px); gap: 10px; }
+    .gs-spark-head, .gs-spark-wrap, [data-col="vel"], [data-col="mag"], [data-col="reload"] { display: none; }
+    .gs-detail-top { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .gs-head, .gs-row { grid-template-columns: minmax(0, 1fr) repeat(3, 52px); padding: 0 8px; gap: 8px; }
+    .gs-head { top: 0; }
+    .gs-thumb { width: 56px; flex-basis: 56px; height: 34px; }
+    .gs-detail { padding: 10px; }
+    .gs-range { flex-basis: 100%; }
+    .gs-seg { overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  }
+
   /* Context menu: opens with a small scale-in, closes quicker than it opens. */
   #ctx {
     position: fixed; z-index: 200; min-width: 200px; padding: 4px;
@@ -389,6 +547,7 @@
       <button data-tab="weapons">Weapons<span class="count"></span></button>
       <button data-tab="vehicles">Vehicles<span class="count"></span></button>
       <button data-tab="maps">Maps<span class="count"></span></button>
+      <button data-tab="stats">Gun stats</button>
       <span class="tab-indicator" aria-hidden="true"></span>
     </nav>
   </div>
@@ -439,6 +598,8 @@
     <p class="hint">Drag cards between tiers (touch works too). <kbd>Double-click</kbd> a card to add a note; hover to read it. <kbd>Right-click</kbd> or long-press a card for more. Click a tier name to rename it, and drag it to move the whole tier. Each tab keeps its own tiers, saved automatically in this browser.</p>
   </section>
 
+  <section id="gunStats" class="stats-only" aria-label="Gun stats"></section>
+
   <footer><p>Player, platoon and server data from <a href="https://gametools.network" target="_blank" rel="noopener">gametools.network</a>. Its roster endpoint often lists only part of a platoon, so members it leaves out are found by scanning live servers for the platoon's tag while the page is open (each find is checked against the player's profile, since tags aren't unique). Anyone still missing can be added by name. Your tier lists are stored only in this browser. Not affiliated with EA or DICE.</p></footer>
 </main>
 
@@ -460,6 +621,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="catalog.js"></script>
+<script src="weapon-stats.js"></script>
+<script src="gun-stats.js"></script>
 <script>
 "use strict";
 
@@ -565,6 +728,8 @@ const freshState = () => ({
   lastTagScan: 0,
   /** The type dropdown's choice per tab ("guns" = weapons without gadgets/melee). */
   typeFilter: { weapons: "guns", vehicles: "all" },
+  /** Gun stats tab: class filter, range, sort, open gun and picked specializations per gun. */
+  stats: {},
 });
 
 /** Fills in anything a saved state is missing (e.g. a tab added after it was saved). */
@@ -574,6 +739,7 @@ function normalize(s) {
   for (const tab of CATALOG_TABS) s.boards[tab] ||= fresh.boards[tab];
   s.items = { ...fresh.items, ...(s.items || {}) };
   s.typeFilter = { ...fresh.typeFilter, ...(s.typeFilter || {}) };
+  s.stats ||= {};
   s.platoons ||= {};
   s.playerBoards ||= {};
   if (!s.platoons[s.platoonId]) s.platoonId = null;
@@ -634,7 +800,7 @@ const entity = (id, tab = state.tab) => (tab === "players" ? state.players : sta
 const placedOn = (tab, pid) => new Set([...board(tab, pid).pool, ...board(tab, pid).tiers.flatMap((t) => t.items)]);
 
 function switchTab(tab) {
-  if (!TABS[tab] || tab === state.tab && document.body.dataset.tab === tab) return;
+  if (!TABS[tab] && tab !== "stats" || tab === state.tab && document.body.dataset.tab === tab) return;
   state.tab = tab;
   save();
   $("#filter").value = "";
@@ -649,6 +815,7 @@ $("#tabs").addEventListener("click", (e) => {
 
 function showTabStatus() {
   if (state.tab === "players") return showCount();
+  if (state.tab === "stats") return setStatus(window.GunStats ? GunStats.status() : "Couldn't load the gun stats (gun-stats.js is missing next to index.html).");
   const all = Object.keys(state.items[state.tab]).length;
   const ranked = board().tiers.reduce((n, t) => n + t.items.length, 0);
   setStatus(all ? `${ranked} of ${all} ${TABS[state.tab].noun} ranked` : `Couldn't load the ${TABS[state.tab].noun} list (catalog.js is missing next to index.html).`);
@@ -990,6 +1157,8 @@ function moveTabIndicator() {
   bar.style.width = `${active.offsetWidth}px`;
   bar.style.translate = `${active.offsetLeft}px 0`;
   if (!bar.dataset.placed) { bar.offsetWidth; bar.style.transition = ""; bar.dataset.placed = "1"; }
+  // The gun stats table header sticks just under the sticky page header.
+  document.documentElement.style.setProperty("--header-h", `${$("header").offsetHeight}px`);
 }
 addEventListener("resize", moveTabIndicator);
 // Barlow loads after first paint and changes the tab widths.
@@ -1001,11 +1170,16 @@ function render() {
   fillTypeFilter();
   for (const b of document.querySelectorAll("#tabs button")) {
     b.classList.toggle("active", b.dataset.tab === state.tab);
+    if (!TABS[b.dataset.tab]) continue;
     const tiers = board(b.dataset.tab).tiers;
     const ranked = tiers.reduce((n, t) => n + t.items.length, 0);
     b.querySelector(".count").textContent = ranked ? `(${ranked})` : "";
   }
   moveTabIndicator();
+  if (state.tab === "stats") {
+    window.GunStats?.render($("#gunStats"), state.stats, save, showTabStatus);
+    return;
+  }
   $("#filter").placeholder = TABS[state.tab].filter;
   $("#noteText").placeholder = TABS[state.tab].note;
 
