@@ -1,3 +1,2 @@
-# Local saves from the old file-saving version; the site now saves in the browser.
-progress*.json
+# Local editor / preview settings.
 .claude/
