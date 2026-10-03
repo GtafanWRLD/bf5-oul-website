@@ -10,14 +10,3 @@ Everything is saved in your browser's local storage: nothing is uploaded anywher
 
 Player, platoon and server data comes live from [gametools.network](https://gametools.network).
 Not affiliated with EA or DICE.
-
-## Files
-
-- `index.html`: the whole app (no build step).
-- `catalog.js`: the weapon, vehicle and map list. Regenerate it with `node tools/build-catalog.mjs`
-  (Node 18+), which combines the weapon and vehicle lists from many players' profiles, since
-  gametools has no "every weapon" endpoint.
-
-## Running locally
-
-Open `index.html` in a browser, or serve the folder (e.g. `python -m http.server`).
