@@ -176,7 +176,7 @@ window.GunStats = (() => {
       ["Reload, empty", (s) => reload(s).empty, "s", "low", 2, "Reload from empty. Includes Quick Reload's speed-up."],
       ["Stripper clip", (s) => reload(s).clip, "s", "low", 2, "Reload a full clip from empty."],
       ["Per round", (s) => reload(s).perRound, "s", "low", 2, "Time to load each single round or shell."],
-      ["Reload", (s) => (hasReload(s) ? null : "No data"), "", null, 0, "sym.gg's datamine has no reload times for this gun."],
+      ["Reload", (s) => (hasReload(s) ? null : "No data"), "", null, 0, "Reload times for this gun aren't known."],
     ]],
   ];
 
@@ -243,6 +243,13 @@ window.GunStats = (() => {
     prefs.q ??= "";
     if (!prefs.sort || !SORTS.some(([k]) => k === prefs.sort.key)) prefs.sort = { key: "name", dir: 1 };
     prefs.specs ||= {};
+    // Saved paths from older data may no longer exist: keep the longest valid start of each.
+    for (const w of DATA?.weapons || []) {
+      const codes = (prefs.specs[w.name] || "").split("+").filter(Boolean);
+      while (codes.length && !validPath(w, codes)) codes.pop();
+      if (codes.length) prefs.specs[w.name] = codes.join("+");
+      else delete prefs.specs[w.name];
+    }
     prefs.chart ||= "damage";
     if (!DATA) {
       root.innerHTML = "";
@@ -531,8 +538,54 @@ window.GunStats = (() => {
       groups.append(g);
     }
     groups.append(spreadTable(w, s));
+    const other = otherEffects(w);
+    if (other) groups.prepend(other);
     panel.append(groups);
     return panel;
+  }
+
+  /** Picked specs whose main effect isn't covered by the numbers (always true for these). */
+  const OFF_SHEET = new Set(["QADS", "MoAD", "Cool", "Flas", "Head", "Ince", "APCR", "Pene", "Fire", "Supp", "HiPo", "Bayo", "Zero", "Bipo", "IBip", "GLau", "Gren", "TopU"]);
+
+  /** "Other effects": what the picked specs do beyond the stats shown, with the maths done. */
+  function otherEffects(w) {
+    const picked = combo(w) ? combo(w).split("+") : [];
+    const rows = picked.filter((c) => specInfo(w, c).effect && (OFF_SHEET.has(c) || w.cosmetic?.includes(c)));
+    if (!rows.length) return null;
+    const g = h("section", "gs-group gs-other");
+    g.append(h("h3", "", "Other effects"));
+    const dl = h("dl");
+    for (const c of rows) {
+      const dt = h("dt", "", w.specNames[c] || c);
+      dt.title = specInfo(w, c).desc;
+      const dd = h("dd", "text better");
+      dd.append(h("span", "gs-val", specInfo(w, c).effect));
+      const extra = effectMaths(w, c);
+      if (extra) dd.append(h("span", "gs-was-text", extra));
+      dl.append(dt, dd);
+    }
+    g.append(dl);
+    return g;
+  }
+
+  /** The numbers behind an effect, where this gun's stats allow working them out. */
+  function effectMaths(w, code) {
+    const s = current(w);
+    switch (code) {
+      case "QADS": return "Aim-in takes 25% less time (1 ÷ 1.33).";
+      case "MoAD": return "1.6× walking speed while aimed.";
+      case "Cool": {
+        // Rounds fired before overheating scale with 1 ÷ (1 − 0.33).
+        return "About 1.5× as long a burst before overheating.";
+      }
+      case "QRel": return "This gun's base reload times aren't known, so only the 15% is shown.";
+      case "Head": {
+        const d = shotDamage(s, 0);
+        return `Body damage stays ${round1(d)}; headshot damage is 25% higher.`;
+      }
+      case "Ince": return "Infantry damage is unchanged.";
+      default: return "";
+    }
   }
 
   /** Stand / crouch / prone spread, aimed and from the hip, still and moving. */
@@ -557,19 +610,59 @@ window.GunStats = (() => {
     return g;
   }
 
-  /** Why a spec has no numbers here: what it does in game that the datamine doesn't record. */
-  const NO_DATA = {
-    MoAD: "Faster movement while aiming. sym.gg's datamine doesn't record this.",
-    Flas: "Hides the muzzle flash. Visual only.",
-    Cool: "Slower overheating. sym.gg's datamine doesn't record this.",
-    Bayo: "Bayonet charge. Doesn't change the gun's stats.",
-    Bipo: "Bipod. Its stability isn't in sym.gg's datamine.",
-    IBip: "Steadier bipod. Its stability isn't in sym.gg's datamine.",
-    Zero: "Adjustable scope zeroing. Doesn't change the gun's stats.",
-    GLau: "Rifle grenades. Doesn't change the gun's stats.",
-    Gren: "Better rifle grenades. Doesn't change the gun's stats.",
-    HiPo: "Higher-zoom scopes. Doesn't change the gun's stats.",
-    QRel: "Faster reloads, but this gun's reload times aren't in sym.gg's datamine.",
+  /**
+   * What each specialization does in game (Battlefield wiki, "Weapon Specializations"). `effect` is
+   * the short label for effects the stats above can't show, used on the node and in Other effects.
+   */
+  const SPEC_INFO = {
+    VRec: { desc: "Reduces vertical recoil." },
+    QADS: { desc: "Aim down sights 33% faster (25% less time to aim in).", effect: "Aim-in 33% faster" },
+    QDep: { desc: "Switch weapons 15% faster and fire sooner after sprinting.", effect: "Weapon swap 15% faster" },
+    HRec: { desc: "Reduces horizontal recoil." },
+    ADSS: { desc: "Tighter spread when aiming and standing still." },
+    IADS: { desc: "Tighter spread when aiming." },
+    Hipf: { desc: "25% less hip-fire spread and 33% longer effective hip-fire range." },
+    ADSM: { desc: "Tighter spread when aiming while moving." },
+    FBul: { desc: "Bullets fly 10% faster, so distant and moving targets are easier to hit." },
+    MoAD: { desc: "Move 60% faster while aiming down sights.", effect: "Move 60% faster while aiming" },
+    Magd: { desc: "Hip-fire spread grows more slowly, so you can fire longer from the hip." },
+    ExMa: { desc: "Bigger magazine." },
+    QRel: { desc: "Reloads 15% faster.", effect: "Reload 15% faster" },
+    Bayo: { desc: "Fits a bayonet, allowing a bayonet charge.", effect: "Bayonet charge" },
+    IROF: { desc: "Higher fire rate in full auto." },
+    QBCy: { desc: "Higher fire rate in full auto." },
+    DMag: { desc: "Detachable magazines instead of stripper clips or single rounds: faster reloads and 1 more round." },
+    QCyc: { desc: "Higher fire rate." },
+    QCyP: { desc: "Higher fire rate." },
+    Long: { desc: "Less bullet drop at long range." },
+    Zero: { desc: "Adjust the scope's zeroing distance for long shots.", effect: "Adjustable zeroing" },
+    Bipo: { desc: "Fits a bipod to deploy on cover.", effect: "Bipod" },
+    IBip: { desc: "More accurate while the bipod is deployed.", effect: "Steadier bipod" },
+    Cool: { desc: "Overheats 33% slower when firing continuously, with less accuracy loss when hot.", effect: "Overheats 33% slower" },
+    Drum: { desc: "Drum magazine: 25 more rounds and a faster reload." },
+    ExBe: { desc: "Bigger ammo belt." },
+    Flas: { desc: "Flash hider: much less muzzle flash, so you're harder to spot.", effect: "Less muzzle flash" },
+    Ince: { desc: "Incendiary rounds: double damage to aircraft.", effect: "2× damage to aircraft" },
+    Heav: { desc: "Heavier ammunition for more damage at range." },
+    Slug: { desc: "Fires a single slug: tight spread and much more damage per hit." },
+    Head: { desc: "Longer lethal range and 25% more headshot damage.", effect: "Headshots +25% damage" },
+    Pene: { desc: "Pellets go through cover and enemies, hitting whoever's behind.", effect: "Pellets penetrate" },
+    Chok: { desc: "Full choke: a 33% tighter pellet spread." },
+    ITri: { desc: "Shorter delay between shots: higher fire rate." },
+    BROF: { desc: "Shorter delay between shots: higher fire rate." },
+    Gren: { desc: "Rifle grenades hit vehicles harder, with a smaller blast.", effect: "Stronger anti-vehicle grenades" },
+    APCR: { desc: "Armour-piercing rounds: more damage to vehicles.", effect: "More damage to vehicles" },
+    Fire: { desc: "Adds fully automatic fire.", effect: "Full-auto fire" },
+    HiPo: { desc: "Scope zoom goes from 3× to 6×.", effect: "6× scope" },
+    GLau: { desc: "Lets the rifle fire rifle grenades.", effect: "Rifle grenades" },
+    Supp: { desc: "Suppressor: quieter shots that don't show you on the minimap.", effect: "Suppressed" },
+    TopU: { desc: "Reload a partly empty magazine by topping it up." , effect: "Top-up reloads" },
+  };
+  const specInfo = (w, code) => {
+    const info = SPEC_INFO[code] || {};
+    // On the Garand, "Heavy Load" makes it fire like a semi-auto sniper rifle, not a shotgun load.
+    if (code === "Heav" && w.cls !== "Support") return { desc: "Heavier rounds: more damage, slower fire, like a semi-auto sniper rifle." };
+    return info;
   };
 
   /**
@@ -622,12 +715,10 @@ window.GunStats = (() => {
         b.type = "button";
         b.append(h("span", "", w.specNames[code] || code));
         b.setAttribute("aria-pressed", String(on));
-        const noData = w.cosmetic?.includes(code);
-        if (noData) {
-          b.classList.add("no-data");
-          b.append(h("span", "gs-spec-note", "no stat data"));
-        }
-        let tip = noData ? NO_DATA[code] || "Changes none of the stats in sym.gg's datamine." : "";
+        // Specs whose effect isn't in the numbers show it on the node instead.
+        const info = specInfo(w, code);
+        if (w.cosmetic?.includes(code) && info.effect) b.append(h("span", "gs-spec-note", info.effect));
+        let tip = info.desc || "";
         if (i > sel.length) {
           b.disabled = true;
           b.classList.add("ahead");

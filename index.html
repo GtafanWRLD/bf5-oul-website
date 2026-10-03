@@ -308,7 +308,24 @@
 
   /* Gun stats */
   body:not([data-tab="stats"]) .stats-only { display: none !important; }
-  body[data-tab="stats"] .board-area { display: none !important; }
+  body[data-tab="stats"] .board-area, body[data-tab="stats"] .tiers-only { display: none !important; }
+
+  /* Players / Weapons / Vehicles / Maps under the Tier lists tab. */
+  .subtabs {
+    display: flex; gap: 2px; width: fit-content; max-width: 100%; margin-bottom: 16px; padding: 3px; overflow-x: auto; scrollbar-width: none;
+    border-radius: var(--radius-m); background: var(--surface-1); box-shadow: var(--shadow-1);
+  }
+  .subtabs button {
+    min-height: 36px; padding: 0 14px; border: 0; border-radius: var(--radius-s); background: none;
+    color: var(--muted); font-weight: 600; white-space: nowrap;
+    transition-property: background-color, color, scale;
+    transition-duration: var(--duration-quick);
+    transition-timing-function: var(--ease-smooth-out);
+  }
+  .subtabs button:hover { color: var(--text); }
+  .subtabs button:active { scale: .96; }
+  .subtabs button.active { background: var(--surface-3); color: var(--text); box-shadow: var(--shadow-1); }
+  .subtabs .count { margin-left: 6px; font-weight: 500; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .gs-toolbar {
     display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 14px;
     padding: 10px; background: var(--surface-1); border-radius: var(--radius-l); box-shadow: var(--shadow-1);
@@ -423,6 +440,8 @@
   /* The other branch of tier 3: closed off by the tier-2 pick. */
   .gs-spec.locked { color: var(--muted); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); opacity: .55; }
   .gs-spec-note { font-size: 10.5px; font-weight: 500; color: var(--muted); letter-spacing: .02em; }
+  .gs-spec[aria-pressed="true"] .gs-spec-note { color: rgb(240 167 58 / .75); }
+  .gs-group dd.text.better .gs-val { color: #a8d27e; }
 
   .gs-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; margin-bottom: 8px; }
   .gs-legend { display: flex; gap: 14px; color: var(--muted); font-size: 12.5px; }
@@ -568,17 +587,20 @@
       </button>
     </div>
     <nav class="tabs" id="tabs" aria-label="Tier lists">
-      <button data-tab="players">Players<span class="count"></span></button>
-      <button data-tab="weapons">Weapons<span class="count"></span></button>
-      <button data-tab="vehicles">Vehicles<span class="count"></span></button>
-      <button data-tab="maps">Maps<span class="count"></span></button>
-      <button data-tab="stats">Gun stats</button>
+      <button data-top="tiers">Tier lists</button>
+      <button data-top="stats">Gun stats</button>
       <span class="tab-indicator" aria-hidden="true"></span>
     </nav>
   </div>
 </header>
 
 <main>
+  <nav class="subtabs tiers-only" id="subtabs" aria-label="Tier lists">
+    <button data-tab="players">Players<span class="count"></span></button>
+    <button data-tab="weapons">Weapons<span class="count"></span></button>
+    <button data-tab="vehicles">Vehicles<span class="count"></span></button>
+    <button data-tab="maps">Maps<span class="count"></span></button>
+  </nav>
   <div class="platoon-bar players-only">
     <div id="barCurrent">
       <img id="barEmblem" alt="">
@@ -733,6 +755,8 @@ const freshPlatoon = (id, info = {}) => ({
 });
 const freshState = () => ({
   tab: "players",
+  /** The tier list the Tier lists tab reopens (tab is "stats" while Gun stats is open). */
+  lastTierTab: "players",
   /** Weapons and maps; each platoon's player board lives in playerBoards. */
   boards: Object.fromEntries(CATALOG_TABS.map((tab) => [tab, freshBoard(tab)])),
   /** The open platoon on the Players tab; null until one is picked. */
@@ -827,13 +851,19 @@ const placedOn = (tab, pid) => new Set([...board(tab, pid).pool, ...board(tab, p
 function switchTab(tab) {
   if (!TABS[tab] && tab !== "stats" || tab === state.tab && document.body.dataset.tab === tab) return;
   state.tab = tab;
+  if (tab !== "stats") state.lastTierTab = tab;
   save();
   $("#filter").value = "";
   render();
   showTabStatus();
 }
 
+// Top tabs: Tier lists (back to whichever list was open last) and Gun stats.
 $("#tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-top]");
+  if (b) switchTab(b.dataset.top === "stats" ? "stats" : state.lastTierTab || "players");
+});
+$("#subtabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-tab]");
   if (b) switchTab(b.dataset.tab);
 });
@@ -977,17 +1007,9 @@ async function syncRoster(force = false, pid = state.platoonId) {
   }
 }
 
-/** "Found 56 of 67 members" so it's clear when someone is still missing. */
+/** The Players tab's status line: only news from the last action (the member count is in the platoon bar). */
 function showCount(extra = "") {
-  const p = platoon();
-  if (!p) return setStatus("Search for a platoon to rank its players, or pick the Weapons, Vehicles or Maps tab.");
-  const members = Object.values(p.roster).filter((r) => r.member).length;
-  const missing = (p.size || 0) - members;
-  setStatus(
-    `${members} of ${p.size || "?"} members found` +
-    (missing > 0 ? ` · the other ${missing} appear once they're seen online, or add them by name` : "") +
-    (extra ? ` · ${extra}` : ""),
-  );
+  setStatus(extra ? extra[0].toUpperCase() + extra.slice(1) : "");
 }
 
 /** Whether a player is in a platoon, from their full profile (the only place gametools exposes it). */
@@ -1175,7 +1197,7 @@ function renderPlatoon() {
 
 /** Slides the tab underline to the open tab (it animates via CSS; the first placement doesn't). */
 function moveTabIndicator() {
-  const active = document.querySelector(`#tabs button[data-tab="${state.tab}"]`);
+  const active = document.querySelector(`#tabs button[data-top="${state.tab === "stats" ? "stats" : "tiers"}"]`);
   const bar = $(".tab-indicator");
   if (!active || !bar) return;
   if (!bar.dataset.placed) bar.style.transition = "none";
@@ -1194,12 +1216,10 @@ function render() {
   document.body.dataset.tab = state.tab;
   fillTypeFilter();
   for (const b of document.querySelectorAll("#tabs button")) {
-    b.classList.toggle("active", b.dataset.tab === state.tab);
-    if (!TABS[b.dataset.tab]) continue;
-    const tiers = board(b.dataset.tab).tiers;
-    const ranked = tiers.reduce((n, t) => n + t.items.length, 0);
-    b.querySelector(".count").textContent = ranked ? `(${ranked})` : "";
+    b.classList.toggle("active", b.dataset.top === (state.tab === "stats" ? "stats" : "tiers"));
   }
+  for (const b of document.querySelectorAll("#subtabs button")) b.classList.toggle("active", b.dataset.tab === state.tab);
+  refreshTabCounts(false);
   moveTabIndicator();
   if (state.tab === "stats") {
     window.GunStats?.render($("#gunStats"), state.stats, save, showTabStatus);
@@ -1307,12 +1327,13 @@ function syncFromDom() {
   refreshTabCounts();
 }
 
-function refreshTabCounts() {
-  for (const b of document.querySelectorAll("#tabs button")) {
+/** How many cards are ranked on each tier list, next to its sub-tab. */
+function refreshTabCounts(status = true) {
+  for (const b of document.querySelectorAll("#subtabs button")) {
     const ranked = board(b.dataset.tab).tiers.reduce((n, t) => n + t.items.length, 0);
     b.querySelector(".count").textContent = ranked ? `(${ranked})` : "";
   }
-  if (state.tab !== "players") showTabStatus();
+  if (status && state.tab !== "players") showTabStatus();
 }
 
 // ---------- drag and drop (pointer events, so touch works too) ----------
