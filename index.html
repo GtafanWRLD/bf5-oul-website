@@ -431,16 +431,20 @@
     transition-duration: var(--duration-quick);
     transition-timing-function: var(--ease-smooth-out);
   }
-  .gs-spec:hover:not(:disabled) { background: var(--surface-3); }
-  .gs-spec:active:not(:disabled) { scale: .96; }
+  .gs-spec:hover:not([aria-disabled="true"]) { background: var(--surface-3); }
+  .gs-spec:active:not([aria-disabled="true"]) { scale: .96; }
   .gs-spec[aria-pressed="true"] { background: #3a2d17; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
-  .gs-spec:disabled { cursor: not-allowed; }
+  .gs-spec[aria-disabled="true"] { cursor: not-allowed; }
+  /* Fixed-height explanation of the hovered / focused node, so the layout never shifts. */
+  .gs-spec-info {
+    display: flex; flex-direction: column; gap: 2px; min-height: 64px; margin-top: 14px; padding: 10px 12px;
+    border-radius: var(--radius-s); background: var(--surface-1); font-size: 13px; line-height: 1.4; text-wrap: pretty;
+  }
+  .gs-spec-info b { color: var(--accent); font-weight: 600; }
   /* Not reachable yet: still readable, like the in-game preview of later tiers. */
   .gs-spec.ahead { color: var(--muted); }
   /* The other branch of tier 3: closed off by the tier-2 pick. */
   .gs-spec.locked { color: var(--muted); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); opacity: .55; }
-  .gs-spec-note { font-size: 10.5px; font-weight: 500; color: var(--muted); letter-spacing: .02em; }
-  .gs-spec[aria-pressed="true"] .gs-spec-note { color: rgb(240 167 58 / .75); }
   .gs-group dd.text.better .gs-val { color: #a8d27e; }
 
   .gs-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -478,7 +482,7 @@
   .gs-val { font-weight: 600; font-variant-numeric: tabular-nums; }
   .gs-was { color: var(--muted); font-size: 12.5px; text-decoration: line-through; font-variant-numeric: tabular-nums; }
   /* Text values (ammo) wrap at spaces like normal text instead of squeezing into the number grid. */
-  .gs-group dd.text { display: flex; flex-direction: column; gap: 2px; }
+  .gs-group dd.text { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
   .gs-group dd.text .gs-val { overflow-wrap: break-word; line-height: 1.3; }
   .gs-was-text { color: var(--muted); font-size: 12.5px; line-height: 1.3; }
   .gs-group dd.better .gs-val, .gs-stance td.better { color: #a8d27e; }
@@ -737,14 +741,14 @@ const CATALOG_TABS = ["weapons", "vehicles", "maps"];
 /** Weapon types that aren't guns; the Weapons tab hides them unless picked in the dropdown. */
 const NON_GUNS = ["Gadget", "Melee"];
 
+/** The Players tab used to start with this tier; normalize() removes it from older saves. */
 const UNKNOWN_LABEL = "Unknown / haven't seen playing";
 /** The familiar S–F tier hues, evened out in lightness so no row shouts over the others. */
 const BASE_TIERS = [["S", "#f0857a"], ["A", "#f2a86a"], ["B", "#efc865"], ["C", "#dcd772"], ["D", "#a8d27e"], ["F", "#82b4e0"]];
 
 const uid = () => Math.random().toString(36).slice(2, 9);
-const freshBoard = (tab) => ({
-  tiers: [...BASE_TIERS, ...(tab === "players" ? [[UNKNOWN_LABEL, "#9c9a8e"]] : [])]
-    .map(([label, color]) => ({ id: uid(), label, color, items: [] })),
+const freshBoard = () => ({
+  tiers: BASE_TIERS.map(([label, color]) => ({ id: uid(), label, color, items: [] })),
   pool: [],
 });
 const freshPlatoon = (id, info = {}) => ({
@@ -791,6 +795,13 @@ function normalize(s) {
   s.stats ||= {};
   s.platoons ||= {};
   s.playerBoards ||= {};
+  // The Unknown tier is gone: anyone left in it goes back to the top of Unranked.
+  for (const b of Object.values(s.playerBoards)) {
+    const unknown = b.tiers.find((t) => t.label === UNKNOWN_LABEL);
+    if (!unknown) continue;
+    b.pool.unshift(...unknown.items);
+    b.tiers = b.tiers.filter((t) => t !== unknown);
+  }
   if (!s.platoons[s.platoonId]) s.platoonId = null;
   return { ...fresh, ...s };
 }
@@ -1571,13 +1582,10 @@ function moveTo(id, tierId) {
 $("#filter").addEventListener("input", applyFilter);
 $("#refresh").addEventListener("click", () => syncRoster(true));
 
-/** New tiers go above the Unknown tier (if it's still last) and open for renaming. */
+/** New tiers go at the bottom and open for renaming. */
 function addTier() {
   const tier = { id: uid(), label: "New", color: "#c8c8c8", items: [] };
-  const tiers = board().tiers;
-  const last = tiers[tiers.length - 1];
-  if (last && last.label === UNKNOWN_LABEL) tiers.splice(tiers.length - 1, 0, tier);
-  else tiers.push(tier);
+  board().tiers.push(tier);
   save(); render();
   const label = document.querySelector(`.tier[data-tier="${tier.id}"] .label`);
   label.focus();

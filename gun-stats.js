@@ -230,6 +230,8 @@ window.GunStats = (() => {
 
   let root, prefs, onChange;
   let justOpened = null;
+  /** Chart mode; not saved, so every visit starts on Damage. */
+  let chartMode = "damage";
   const combo = (w) => prefs.specs[w.name] || "";
   const current = (w) => resolve(w, combo(w));
   const changed = () => onChange && onChange();
@@ -250,7 +252,7 @@ window.GunStats = (() => {
       if (codes.length) prefs.specs[w.name] = codes.join("+");
       else delete prefs.specs[w.name];
     }
-    prefs.chart ||= "damage";
+    delete prefs.chart; // older saves kept the chart mode; it now starts on Damage every visit
     if (!DATA) {
       root.innerHTML = "";
       root.append(h("p", "gs-empty", "Couldn't load the gun stats (weapon-stats.js is missing next to index.html)."));
@@ -261,7 +263,7 @@ window.GunStats = (() => {
     renderList();
   }
 
-  const status = () => (DATA ? `${DATA.weapons.length} guns · datamined stats, every specialization` : "Gun stats unavailable");
+  const status = () => (DATA ? "" : "Couldn't load the gun stats.");
 
   // ---------- toolbar ----------
 
@@ -534,59 +536,45 @@ window.GunStats = (() => {
         }
         dl.append(dt, dd);
       }
+      // Effects the numbers can't show, as normal rows. A row exists whenever the spec is in this
+      // gun's tree, picked or not, so picking never adds or removes rows.
+      const picked = new Set(combo(w) ? combo(w).split("+") : []);
+      for (const [code, label, on, off, help] of EFFECT_ROWS[title] || []) {
+        if (!w.tree?.some((tier) => tier.includes(code))) continue;
+        if (code === "QRel" && !w.cosmetic?.includes(code)) continue; // shown in the reload times instead
+        const dt = h("dt", "", label);
+        dt.title = help;
+        const dd = h("dd", "text");
+        dd.append(h("span", "gs-val", picked.has(code) ? on : off));
+        if (picked.has(code)) dd.classList.add("better");
+        dl.append(dt, dd);
+      }
       g.append(dl);
       groups.append(g);
     }
     groups.append(spreadTable(w, s));
-    const other = otherEffects(w);
-    if (other) groups.prepend(other);
     panel.append(groups);
     return panel;
   }
 
-  /** Picked specs whose main effect isn't covered by the numbers (always true for these). */
-  const OFF_SHEET = new Set(["QADS", "MoAD", "Cool", "Flas", "Head", "Ince", "APCR", "Pene", "Fire", "Supp", "HiPo", "Bayo", "Zero", "Bipo", "IBip", "GLau", "Gren", "TopU"]);
-
-  /** "Other effects": what the picked specs do beyond the stats shown, with the maths done. */
-  function otherEffects(w) {
-    const picked = combo(w) ? combo(w).split("+") : [];
-    const rows = picked.filter((c) => specInfo(w, c).effect && (OFF_SHEET.has(c) || w.cosmetic?.includes(c)));
-    if (!rows.length) return null;
-    const g = h("section", "gs-group gs-other");
-    g.append(h("h3", "", "Other effects"));
-    const dl = h("dl");
-    for (const c of rows) {
-      const dt = h("dt", "", w.specNames[c] || c);
-      dt.title = specInfo(w, c).desc;
-      const dd = h("dd", "text better");
-      dd.append(h("span", "gs-val", specInfo(w, c).effect));
-      const extra = effectMaths(w, c);
-      if (extra) dd.append(h("span", "gs-was-text", extra));
-      dl.append(dt, dd);
-    }
-    g.append(dl);
-    return g;
-  }
-
-  /** The numbers behind an effect, where this gun's stats allow working them out. */
-  function effectMaths(w, code) {
-    const s = current(w);
-    switch (code) {
-      case "QADS": return "Aim-in takes 25% less time (1 ÷ 1.33).";
-      case "MoAD": return "1.6× walking speed while aimed.";
-      case "Cool": {
-        // Rounds fired before overheating scale with 1 ÷ (1 − 0.33).
-        return "About 1.5× as long a burst before overheating.";
-      }
-      case "QRel": return "This gun's base reload times aren't known, so only the 15% is shown.";
-      case "Head": {
-        const d = shotDamage(s, 0);
-        return `Body damage stays ${round1(d)}; headshot damage is 25% higher.`;
-      }
-      case "Ince": return "Infantry damage is unchanged.";
-      default: return "";
-    }
-  }
+  /**
+   * Spec effects that aren't in the datamined numbers, per stat group: [code, label, with the
+   * spec, without it, help]. Amounts are from the Battlefield wiki.
+   */
+  const EFFECT_ROWS = {
+    Handling: [
+      ["QADS", "Aim-in speed", "33% faster", "Normal", "Quick Aim: aim down sights 33% faster. Actual aim times depend on the gun and sight, so only the change is shown."],
+      ["MoAD", "Moving while aimed", "60% faster", "Normal", "Lightened Stock: move 60% faster while aiming down sights."],
+    ],
+    "Ammo and reload": [
+      ["QRel", "Quick Reload", "15% faster reloads", "Not picked", "Quick Reload: reloads 15% faster. This gun's base reload times aren't known."],
+      ["Cool", "Overheating", "33% slower", "Normal", "Chrome Lining: heats up 33% slower when firing continuously (about 1.5× as long a burst), with less accuracy loss when hot."],
+      ["Head", "Headshot damage", "+25%", "Normal", "Solid Slug: 25% more headshot damage and a longer lethal range."],
+      ["Pene", "Penetration", "Through cover and enemies", "None", "Penetrating Shot: pellets go through cover and enemies, hitting whoever's behind."],
+      ["Ince", "Damage to aircraft", "2×", "Normal", "Incendiary Bullets: double damage to aircraft; infantry damage is unchanged."],
+      ["APCR", "Damage to vehicles", "Higher", "Normal", "APCR Bullets: more damage to vehicles."],
+    ],
+  };
 
   /** Stand / crouch / prone spread, aimed and from the hip, still and moving. */
   function spreadTable(w, s) {
@@ -610,53 +598,50 @@ window.GunStats = (() => {
     return g;
   }
 
-  /**
-   * What each specialization does in game (Battlefield wiki, "Weapon Specializations"). `effect` is
-   * the short label for effects the stats above can't show, used on the node and in Other effects.
-   */
+  /** What each specialization does in game (Battlefield wiki, "Weapon Specializations"). */
   const SPEC_INFO = {
     VRec: { desc: "Reduces vertical recoil." },
-    QADS: { desc: "Aim down sights 33% faster (25% less time to aim in).", effect: "Aim-in 33% faster" },
-    QDep: { desc: "Switch weapons 15% faster and fire sooner after sprinting.", effect: "Weapon swap 15% faster" },
+    QADS: { desc: "Aim down sights 33% faster (25% less time to aim in)." },
+    QDep: { desc: "Switch weapons 15% faster and fire sooner after sprinting." },
     HRec: { desc: "Reduces horizontal recoil." },
     ADSS: { desc: "Tighter spread when aiming and standing still." },
     IADS: { desc: "Tighter spread when aiming." },
     Hipf: { desc: "25% less hip-fire spread and 33% longer effective hip-fire range." },
     ADSM: { desc: "Tighter spread when aiming while moving." },
     FBul: { desc: "Bullets fly 10% faster, so distant and moving targets are easier to hit." },
-    MoAD: { desc: "Move 60% faster while aiming down sights.", effect: "Move 60% faster while aiming" },
+    MoAD: { desc: "Move 60% faster while aiming down sights." },
     Magd: { desc: "Hip-fire spread grows more slowly, so you can fire longer from the hip." },
     ExMa: { desc: "Bigger magazine." },
-    QRel: { desc: "Reloads 15% faster.", effect: "Reload 15% faster" },
-    Bayo: { desc: "Fits a bayonet, allowing a bayonet charge.", effect: "Bayonet charge" },
+    QRel: { desc: "Reloads 15% faster." },
+    Bayo: { desc: "Fits a bayonet, allowing a bayonet charge." },
     IROF: { desc: "Higher fire rate in full auto." },
     QBCy: { desc: "Higher fire rate in full auto." },
     DMag: { desc: "Detachable magazines instead of stripper clips or single rounds: faster reloads and 1 more round." },
     QCyc: { desc: "Higher fire rate." },
     QCyP: { desc: "Higher fire rate." },
     Long: { desc: "Less bullet drop at long range." },
-    Zero: { desc: "Adjust the scope's zeroing distance for long shots.", effect: "Adjustable zeroing" },
-    Bipo: { desc: "Fits a bipod to deploy on cover.", effect: "Bipod" },
-    IBip: { desc: "More accurate while the bipod is deployed.", effect: "Steadier bipod" },
-    Cool: { desc: "Overheats 33% slower when firing continuously, with less accuracy loss when hot.", effect: "Overheats 33% slower" },
+    Zero: { desc: "Adjust the scope's zeroing distance for long shots." },
+    Bipo: { desc: "Fits a bipod to deploy on cover." },
+    IBip: { desc: "More accurate while the bipod is deployed." },
+    Cool: { desc: "Overheats 33% slower when firing continuously, with less accuracy loss when hot." },
     Drum: { desc: "Drum magazine: 25 more rounds and a faster reload." },
     ExBe: { desc: "Bigger ammo belt." },
-    Flas: { desc: "Flash hider: much less muzzle flash, so you're harder to spot.", effect: "Less muzzle flash" },
-    Ince: { desc: "Incendiary rounds: double damage to aircraft.", effect: "2× damage to aircraft" },
+    Flas: { desc: "Flash hider: much less muzzle flash, so you're harder to spot." },
+    Ince: { desc: "Incendiary rounds: double damage to aircraft." },
     Heav: { desc: "Heavier ammunition for more damage at range." },
     Slug: { desc: "Fires a single slug: tight spread and much more damage per hit." },
-    Head: { desc: "Longer lethal range and 25% more headshot damage.", effect: "Headshots +25% damage" },
-    Pene: { desc: "Pellets go through cover and enemies, hitting whoever's behind.", effect: "Pellets penetrate" },
+    Head: { desc: "Longer lethal range and 25% more headshot damage." },
+    Pene: { desc: "Pellets go through cover and enemies, hitting whoever's behind." },
     Chok: { desc: "Full choke: a 33% tighter pellet spread." },
     ITri: { desc: "Shorter delay between shots: higher fire rate." },
     BROF: { desc: "Shorter delay between shots: higher fire rate." },
-    Gren: { desc: "Rifle grenades hit vehicles harder, with a smaller blast.", effect: "Stronger anti-vehicle grenades" },
-    APCR: { desc: "Armour-piercing rounds: more damage to vehicles.", effect: "More damage to vehicles" },
-    Fire: { desc: "Adds fully automatic fire.", effect: "Full-auto fire" },
-    HiPo: { desc: "Scope zoom goes from 3× to 6×.", effect: "6× scope" },
-    GLau: { desc: "Lets the rifle fire rifle grenades.", effect: "Rifle grenades" },
-    Supp: { desc: "Suppressor: quieter shots that don't show you on the minimap.", effect: "Suppressed" },
-    TopU: { desc: "Reload a partly empty magazine by topping it up." , effect: "Top-up reloads" },
+    Gren: { desc: "Rifle grenades hit vehicles harder, with a smaller blast." },
+    APCR: { desc: "Armour-piercing rounds: more damage to vehicles." },
+    Fire: { desc: "Adds fully automatic fire." },
+    HiPo: { desc: "Scope zoom goes from 3× to 6×." },
+    GLau: { desc: "Lets the rifle fire rifle grenades." },
+    Supp: { desc: "Suppressor: quieter shots that don't show you on the minimap." },
+    TopU: { desc: "Reload a partly empty magazine by topping it up."  },
   };
   const specInfo = (w, code) => {
     const info = SPEC_INFO[code] || {};
@@ -702,6 +687,17 @@ window.GunStats = (() => {
     const wrap = h("div", "gs-tree");
     const svg = s$("svg", { class: "gs-tree-lines", "aria-hidden": "true" });
     wrap.append(svg);
+    // One fixed line under the tree explains whichever node is hovered or focused; it has a set
+    // height, so nothing around it moves.
+    const infoBox = h("div", "gs-spec-info");
+    infoBox.setAttribute("aria-live", "polite");
+    const IDLE = "Hover or tab to a specialization to see what it does.";
+    const showInfo = (name, text) => {
+      infoBox.innerHTML = "";
+      if (!name) return infoBox.append(h("span", "muted", IDLE));
+      infoBox.append(h("b", "", name), h("span", "", text));
+    };
+    showInfo();
     const nodes = new Map();
     tree.forEach((options, i) => {
       const row = h("div", "gs-tier");
@@ -715,24 +711,29 @@ window.GunStats = (() => {
         b.type = "button";
         b.append(h("span", "", w.specNames[code] || code));
         b.setAttribute("aria-pressed", String(on));
-        // Specs whose effect isn't in the numbers show it on the node instead.
-        const info = specInfo(w, code);
-        if (w.cosmetic?.includes(code) && info.effect) b.append(h("span", "gs-spec-note", info.effect));
-        let tip = info.desc || "";
+        let tip = specInfo(w, code).desc || "";
+        let blocked = false;
         if (i > sel.length) {
-          b.disabled = true;
+          blocked = true;
           b.classList.add("ahead");
-          tip = `Pick tier ${sel.length + 1} first. ${tip}`;
+          tip = `${tip} Pick tier ${sel.length + 1} first.`;
         } else if (!reachable) {
-          b.disabled = true;
+          blocked = true;
           b.classList.add("locked");
           const via = tree[i - 1]?.find((p) => edges.has(`${i - 1}:${p}>${code}`));
-          tip = `Only after ${w.specNames[via] || "the other branch"}. ${tip}`;
+          tip = `${tip} Only after ${w.specNames[via] || "the other branch"}.`;
         } else if (on) {
-          tip = `Click to remove. ${tip}`;
+          tip = `${tip} Click to remove.`;
         }
-        b.title = tip.trim();
+        // aria-disabled rather than disabled, so locked nodes can still be hovered or focused to read why.
+        if (blocked) b.setAttribute("aria-disabled", "true");
+        const name = w.specNames[code] || code;
+        b.addEventListener("pointerenter", () => showInfo(name, tip.trim()));
+        b.addEventListener("focus", () => showInfo(name, tip.trim()));
+        b.addEventListener("pointerleave", () => showInfo());
+        b.addEventListener("blur", () => showInfo());
         b.addEventListener("click", () => {
+          if (blocked) return;
           if (on) return setCombo(w, sel.slice(0, i));
           const next = [...sel.slice(0, i), code, ...sel.slice(i + 1)];
           // Keep the later picks where possible: a tier-3 pick moves to the new branch's node.
@@ -750,7 +751,7 @@ window.GunStats = (() => {
       row.append(opts);
       wrap.append(row);
     });
-    box.append(wrap);
+    box.append(wrap, infoBox);
 
     // Lines are drawn from the laid-out node positions, so they wait until the tree is in the page.
     box.drawLines = () => {
@@ -805,9 +806,9 @@ window.GunStats = (() => {
     for (const [k, m] of Object.entries(MODES)) {
       const b = h("button", "", m.label);
       b.type = "button";
-      b.setAttribute("aria-pressed", String(prefs.chart === k));
+      b.setAttribute("aria-pressed", String(chartMode === k));
       b.addEventListener("click", () => {
-        prefs.chart = k;
+        chartMode = k;
         changed();
         for (const x of seg.children) x.setAttribute("aria-pressed", String(x === b));
         draw();
@@ -832,7 +833,7 @@ window.GunStats = (() => {
     let svg = null;
     function draw() {
       if (!plot.isConnected) return;
-      const mode = MODES[prefs.chart];
+      const mode = MODES[chartMode];
       const width = Math.max(260, plot.clientWidth || 560);
       const H = 230, P = { l: 44, r: 14, t: 14, b: 28 };
       const showStock = !sameCurve(mode);
@@ -858,10 +859,10 @@ window.GunStats = (() => {
 
       svg?.remove();
       svg = s$("svg", { width, height: H, class: "gs-svg", role: "img", "aria-label": `${mode.label} over range for ${w.name}` });
-      for (const t of ticks(ymax, prefs.chart === "btk")) {
+      for (const t of ticks(ymax, chartMode === "btk")) {
         svg.append(s$("line", { x1: P.l, x2: width - P.r, y1: y(t), y2: y(t), class: "grid" }));
         const lab = s$("text", { x: P.l - 8, y: y(t) + 4, class: "axis", "text-anchor": "end" });
-        lab.textContent = prefs.chart === "ttk" ? Math.round(t) : t;
+        lab.textContent = chartMode === "ttk" ? Math.round(t) : t;
         svg.append(lab);
       }
       for (let d = 0; d <= MAX_RANGE; d += width < 420 ? 50 : 25) {
