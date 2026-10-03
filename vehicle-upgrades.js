@@ -3,8 +3,8 @@
 /**
  * The Vehicle upgrades tab: every BFV tank and plane's specialization tree (vehicle-specs.js, from
  * the Battlefield wiki) with what each upgrade does. There are no public vehicle numbers, so unlike
- * Gun stats this shows the trees and descriptions only. Trees the wiki lists with only 4 tiers
- * (the Pacific vehicles have 6) are flagged as possibly outdated.
+ * Gun stats this shows loadouts (weapons, ammo, payloads), upgrade trees and descriptions only.
+ * Trees the wiki lists with only 4 tiers (the Pacific vehicles have 6) get a note.
  */
 window.VehicleUpgrades = (() => {
   const DATA = window.VEHICLE_SPECS;
@@ -79,10 +79,10 @@ window.VehicleUpgrades = (() => {
 
     const note = h("p", "hint");
     note.innerHTML =
-      "Click a vehicle to see its specialization tree and plan a build; hover an upgrade to read what it does. " +
-      "Exact vehicle numbers (health, damage, speed) have never been published, so upgrades are described rather than measured. " +
-      "Trees marked <b>may be outdated</b> have only 4 tiers on the wiki (the Pacific vehicles have 6), so they may not match the game. " +
-      `Upgrade lists from the <a href="${DATA?.source}" target="_blank" rel="noopener">Battlefield wiki</a>.`;
+      "Click a vehicle to see its loadout and specialization tree and plan a build; hover an upgrade to read what it does. " +
+      "Performance numbers (health, speed, turn rate, shell damage) have never been published for BF5, so upgrades are described rather than measured. " +
+      `Loadouts and upgrade lists from the <a href="${DATA?.source}" target="_blank" rel="noopener">Battlefield wiki</a>, ` +
+      `with upgrade figures from <a href="https://www.gamepressure.com/battlefield-5/vehicles/z3bb87" target="_blank" rel="noopener">Gamepressure</a>.`;
 
     root.append(bar, list, note);
   }
@@ -148,7 +148,7 @@ window.VehicleUpgrades = (() => {
     names.append(h("span", picked.length ? "gs-sub" : "gs-sub vu-sub-muted", picked.length ? picked.join(" · ") : v.tree.length ? `${v.tree.length} tiers` : "No upgrade data"));
 
     const tags = h("span", "vu-tags");
-    if (v.outdated) tags.append(h("span", "vu-tag warn", "May be outdated"));
+    if (v.loadout?.role) tags.append(h("span", "vu-tag", v.loadout.role));
     if (v.tree.length) tags.append(h("span", "vu-tag", `${picked.length}/${v.tree.length} picked`));
 
     btn.append(thumb, names, tags);
@@ -169,21 +169,71 @@ window.VehicleUpgrades = (() => {
 
   function detail(v) {
     const panel = h("div", "gs-detail");
-    if (!v.tree.length) {
-      panel.append(h("p", "muted", "The Battlefield wiki doesn't list this vehicle's specializations yet, so there's nothing reliable to show."));
+    if (!v.tree.length && !v.loadout) {
+      panel.append(h("p", "muted", "The Battlefield wiki doesn't cover this vehicle's loadout or specializations yet, so there's nothing reliable to show."));
       return panel;
     }
-    if (v.outdated) {
-      const warn = h("p", "vu-warn");
-      warn.textContent =
-        `The wiki lists ${v.name} with only ${v.tree.length} tiers, while the Pacific vehicles have 6. ` +
-        "This tree may be incomplete or out of date, so check it against the game.";
-      panel.append(warn);
+    if (v.partial) {
+      panel.append(h("p", "vu-note",
+        `Note: the wiki lists ${v.tree.length} upgrade tiers for the ${v.name}, while the Pacific vehicles have 6, so the in-game tree may have more.`));
     }
-    const top = h("div", "gs-detail-top vu-detail-top");
-    top.append(tree(v), buildSummary(v));
-    panel.append(top);
+    if (v.loadout) panel.append(loadoutBox(v));
+    if (v.tree.length) {
+      const top = h("div", "gs-detail-top vu-detail-top");
+      top.append(tree(v), buildSummary(v));
+      panel.append(top);
+    }
     return panel;
+  }
+
+  /**
+   * The vehicle's stock weapons per seat, payload and equipment options (wiki infobox). Items
+   * that come from an upgrade are tagged, and lit when that upgrade is in the planned build.
+   */
+  function loadoutBox(v) {
+    const L = v.loadout;
+    const key = (s) => s.toLowerCase().replace(/\(.*?\)/g, "").replace(/[^a-z0-9]/g, "");
+    const picks = picksOf(v);
+    const planned = new Set(picks.map((p, i) => (p == null ? null : key(v.tree[i][p].name))).filter(Boolean));
+    const items = (list) => {
+      const ul = h("ul", "vu-items");
+      for (const text of list) {
+        const upgrade = /\(upgrade\)/i.test(text);
+        const isDefault = /\(default\)/i.test(text);
+        const li = h("li", upgrade ? "upgrade" : "");
+        li.append(h("span", "", text.replace(/\s*\((upgrade|default)\)/gi, "")));
+        if (upgrade) {
+          const on = planned.has(key(text));
+          li.classList.toggle("on", on);
+          li.append(h("span", "vu-item-tag", on ? "in your build" : "upgrade"));
+        } else if (isDefault) li.append(h("span", "vu-item-tag", "default"));
+        ul.append(li);
+      }
+      return ul;
+    };
+    // Seat names from the crew list ("1 Rear Gunner" → "Rear gunner"); the pilot/driver is first.
+    const roles = L.crew.filter((c) => !/^\(/.test(c)).map((c) => c.replace(/^\d+\s*/, ""));
+    const box = h("section", "gs-group vu-loadout");
+    box.append(h("h3", "", "Loadout"));
+    const dl = h("dl");
+    const row = (label, content) => { dl.append(h("dt", "", label)); const dd = h("dd", "text"); dd.append(content); dl.append(dd); };
+    if (L.role) row("Role", h("span", "gs-val", L.role));
+    if (L.crew.length) row("Crew", h("span", "gs-val", L.crew.filter((c) => !/^\(/.test(c)).join(", ")));
+    L.seats.forEach((seat, i) => {
+      const wrap = h("div");
+      wrap.append(items(seat.weapons));
+      if (seat.ammo.length) wrap.append(h("span", "gs-was-text", `Ammo: ${seat.ammo.join(" · ")}`));
+      row(`${roles[i] || `Seat ${i + 1}`} weapons`, wrap);
+    });
+    if (L.payload.length) {
+      const wrap = h("div");
+      wrap.append(items(L.payload));
+      if (L.payloadAmmo.length) wrap.append(h("span", "gs-was-text", `Ammo: ${L.payloadAmmo.join(" · ")}`));
+      row("Secondary", wrap);
+    }
+    L.equipment.forEach((slot, i) => row(`Equipment ${i + 1}`, items(slot)));
+    box.append(dl);
+    return box;
   }
 
   /** The tree: one pick per tier. Nothing is locked here because the wiki doesn't give the lines between upgrades for the current trees. */
