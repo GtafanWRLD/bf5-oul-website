@@ -5,230 +5,393 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BF5 Tier List</title>
 <meta name="description" content="Tier lists for Battlefield V: any platoon's players, plus every weapon, vehicle and map.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* Field briefing: warm charcoal, one signal-amber accent, condensed signage type. */
   :root {
-    --bg: #111214;
-    --panel: #1b1c1f;
-    --panel-2: #232428;
-    --line: #2e3035;
-    --text: #e8e8ea;
-    --muted: #8b8d93;
-    --gold: #f5c518;
-    --danger: #e5484d;
+    --bg: #121210;
+    --surface-1: #1a1a17;
+    --surface-2: #22221e;
+    --surface-3: #2c2c27;
+    --line: #34342e;
+    --text: #ecebe4;
+    --muted: #a6a497;
+    --accent: #f0a73a;
+    --accent-ink: #1c1306;
+    --danger: #ec6a5e;
+
+    --font: "Barlow", system-ui, sans-serif;
+    --font-display: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+
+    --radius-s: 6px;
+    --radius-m: 8px;
+    --radius-l: 12px;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / .35), 0 0 0 1px rgb(255 255 255 / .04);
+    --shadow-2: 0 2px 4px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .35), 0 0 0 1px rgb(255 255 255 / .05);
+    --shadow-3: 0 4px 8px rgb(0 0 0 / .35), 0 18px 48px rgb(0 0 0 / .5), 0 0 0 1px rgb(255 255 255 / .06);
+
+    /* Motion tokens (transitions.dev scale). */
+    --duration-quick: 150ms;
+    --duration-fast: 250ms;
+    --duration-slow: 400ms;
+    --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
   }
+
   * { box-sizing: border-box; }
+  html { scrollbar-color: var(--surface-3) var(--bg); }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 15px/1.45 var(--font);
+    -webkit-font-smoothing: antialiased;
+    caret-color: var(--accent);
+    accent-color: var(--accent);
   }
-  header {
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    padding: 14px 16px 0; border-bottom: 1px solid var(--line); background: var(--panel);
-    position: sticky; top: 0; z-index: 5;
-  }
-  header img { width: 40px; height: 40px; border-radius: 6px; }
-  header h1 { margin: 0; font-size: 18px; }
-  header h1 span { color: var(--gold); }
-  #status { color: var(--muted); font-size: 12px; }
+  ::selection { background: rgb(240 167 58 / .35); color: var(--text); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  ::-webkit-scrollbar { width: 12px; height: 12px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 999px; border: 3px solid var(--bg); }
+  h1, h2, h3 { text-wrap: balance; }
+  .muted { color: var(--muted); font-size: 13px; }
   .spacer { flex: 1; }
-  button, .btn {
-    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 6px; padding: 7px 11px; font: inherit; cursor: pointer; white-space: nowrap;
-  }
-  button:hover, .btn:hover { border-color: #4a4d55; }
-  button.primary { background: var(--gold); color: #111; border-color: var(--gold); font-weight: 600; }
-  button.danger:hover { border-color: var(--danger); color: var(--danger); }
-  main { max-width: 1200px; margin: 0 auto; padding: 16px; }
 
-  nav.tabs { flex-basis: 100%; display: flex; gap: 2px; margin-top: 4px; }
-  nav.tabs button {
-    border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none;
-    padding: 10px 16px; color: var(--muted); font-weight: 600;
+  .icon { width: 18px; height: 18px; flex: 0 0 auto; stroke: currentColor; stroke-width: 1.75; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Buttons */
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+    min-height: 38px; padding: 0 14px; border: 0; border-radius: var(--radius-m);
+    background: var(--surface-2); color: var(--text); font-weight: 500;
+    box-shadow: var(--shadow-1);
+    transition-property: background-color, color, scale;
+    transition-duration: var(--duration-quick);
+    transition-timing-function: var(--ease-smooth-out);
   }
-  nav.tabs button:hover { color: var(--text); }
-  nav.tabs button.active { color: var(--text); border-bottom-color: var(--gold); }
-  nav.tabs .count { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: 4px; }
-  .players-only { }
+  .btn:hover { background: var(--surface-3); }
+  .btn:active { scale: .96; }
+  .btn.ghost { background: transparent; box-shadow: none; color: var(--muted); }
+  .btn.ghost:hover { background: var(--surface-2); color: var(--text); }
+  .btn.ghost.danger:hover { color: var(--danger); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .4); }
+  .btn.primary:hover { background: #f5b552; }
+  .icon-btn {
+    position: relative; display: grid; place-items: center; width: 30px; height: 30px; padding: 0;
+    border: 0; border-radius: var(--radius-s); background: transparent; color: var(--muted);
+    transition-property: background-color, color, scale;
+    transition-duration: var(--duration-quick);
+    transition-timing-function: var(--ease-smooth-out);
+  }
+  .icon-btn .icon { width: 16px; height: 16px; }
+  .icon-btn:hover { background: var(--surface-3); color: var(--text); }
+  .icon-btn.danger:hover { color: var(--danger); }
+  .icon-btn:active { scale: .96; }
+  /* 40px touch target without growing the visible control. */
+  .icon-btn::after { content: ""; position: absolute; inset: -5px; }
+
+  /* Header */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--surface-1);
+    box-shadow: 0 1px 0 var(--line), 0 8px 24px rgb(0 0 0 / .25);
+  }
+  .topbar {
+    max-width: 1240px; margin: 0 auto; padding: 14px 20px 0;
+    display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap;
+  }
+  .brand { min-width: 0; flex: 1 1 280px; }
+  .brand h1 {
+    margin: 0; font: 700 26px/1 var(--font-display); letter-spacing: .02em; text-transform: uppercase;
+  }
+  .brand h1 span { color: var(--accent); }
+  #status { margin: 4px 0 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; text-wrap: pretty; }
+  .actions { display: flex; gap: 4px; flex-wrap: wrap; }
+
+  nav.tabs { position: relative; flex-basis: 100%; display: flex; gap: 4px; margin-top: 6px; overflow-x: auto; scrollbar-width: none; }
+  nav.tabs::-webkit-scrollbar { display: none; }
+  nav.tabs button {
+    position: relative; border: 0; background: none; padding: 12px 14px 14px;
+    color: var(--muted); font: 600 15px/1 var(--font); white-space: nowrap;
+    transition: color var(--duration-quick) var(--ease-smooth-out);
+  }
+  nav.tabs button:hover, nav.tabs button.active { color: var(--text); }
+  nav.tabs .count { margin-left: 6px; font-weight: 500; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tab-indicator {
+    position: absolute; left: 0; bottom: 0; height: 3px; width: 0; border-radius: 3px 3px 0 0;
+    background: var(--accent);
+    transition-property: translate, width;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-smooth-out);
+  }
+
+  main { max-width: 1240px; margin: 0 auto; padding: 20px 20px 48px; }
+
   body:not([data-tab="players"]) .players-only { display: none !important; }
   body:not([data-tab="weapons"]):not([data-tab="vehicles"]) .typed-only { display: none !important; }
 
-  #board { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #000; }
-  .tier { display: flex; min-height: 92px; border-bottom: 1px solid #000; }
-  .tier:last-child { border-bottom: 0; }
-  .label {
-    width: 100px; flex: 0 0 100px; display: flex; align-items: center; justify-content: center;
-    color: #111; font-weight: 700; font-size: 20px; text-align: center; padding: 6px;
-    word-break: break-word; outline: none;
-  }
-  .label[contenteditable="true"]:focus { box-shadow: inset 0 0 0 2px #fff; }
-  .label.long { font-size: 13px; font-weight: 600; }
-  #addTierBottom { width: 100%; margin-top: 6px; border-style: dashed; color: var(--muted); }
-  #addTierBottom:hover { color: var(--text); }
-  .drop {
-    flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; padding: 4px;
-    background: var(--panel); min-height: 92px;
-  }
-  .tier-tools { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 4px; background: var(--panel-2); }
-  .tier-tools button { padding: 2px 7px; font-size: 12px; }
-  .tier-tools input[type=color] { width: 26px; height: 22px; border: 0; padding: 0; background: none; cursor: pointer; }
-  .grip {
-    font-size: 20px; line-height: 1; text-align: center; color: var(--muted);
-    cursor: grab; touch-action: none; user-select: none; padding: 2px 0;
-  }
-  .grip:hover { color: var(--text); }
-  .label { cursor: grab; }
-  .label:focus { cursor: text; }
-  .tier-placeholder { opacity: .3; }
-  .tier-ghost {
-    position: fixed; z-index: 100; pointer-events: none; opacity: .92;
-    box-shadow: 0 10px 30px rgba(0,0,0,.7); outline: 2px solid var(--gold);
-  }
-  body.tier-dragging, body.tier-dragging * { user-select: none !important; cursor: grabbing !important; }
-
-  .card {
-    width: 84px; height: 84px; position: relative; border-radius: 4px; overflow: hidden;
-    background: #2a2c31; cursor: grab; user-select: none; touch-action: none; flex: 0 0 auto;
-  }
-  .card img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-  /* Weapon renders are wide, transparent PNGs; maps are 16:9 screenshots. */
-  .card.weapon { width: 132px; background: linear-gradient(#34373d, #24262a); }
-  .card.weapon img { object-fit: contain; padding: 6px 6px 18px; }
-  .card.map { width: 150px; }
-  .card .initials {
-    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-    font-size: 26px; font-weight: 700; color: #fff;
-  }
-  .card .name {
-    position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 3px;
-    background: rgba(0,0,0,.72); color: #fff; font-size: 11px; text-align: center;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .card .role {
-    position: absolute; top: 2px; left: 2px; font-size: 9px; padding: 0 4px; border-radius: 3px;
-    background: rgba(0,0,0,.65); color: var(--gold);
-  }
-  .card.extra .role { color: #9ad; }
-  .card.weapon .role { color: #cfd3da; }
-  .card .note-dot {
-    position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 50%;
-    background: var(--gold); color: #111; font-size: 10px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  #noteDlg {
-    background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
-    padding: 16px; width: min(440px, calc(100vw - 32px));
-  }
-  #noteDlg::backdrop { background: rgba(0,0,0,.6); }
-  #noteDlg h3 { margin: 0 0 4px; font-size: 16px; }
-  #noteDlg textarea {
-    width: 100%; min-height: 140px; margin: 10px 0; resize: vertical;
-    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 6px; padding: 8px; font: inherit;
-  }
-  #noteDlg .row { display: flex; gap: 8px; justify-content: flex-end; }
-
+  /* Platoon picker */
   .platoon-bar {
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
-    padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 16px;
+    padding: 10px; background: var(--surface-1); border-radius: var(--radius-l); box-shadow: var(--shadow-1);
   }
-  #barCurrent { display: flex; align-items: center; gap: 10px; }
-  #barCurrent img { width: 40px; height: 40px; border-radius: 6px; background: var(--panel-2); }
+  #barCurrent { display: flex; align-items: center; gap: 12px; padding-left: 2px; min-width: 0; }
+  #barCurrent img { width: 40px; height: 40px; border-radius: var(--radius-s); background: var(--surface-2); box-shadow: 0 0 0 1px rgb(255 255 255 / .1); }
   body.no-platoon #barCurrent { display: none; }
-  #barName { font-weight: 600; }
-  #barName .tag { color: var(--gold); }
+  #barName { font: 700 20px/1.1 var(--font-display); letter-spacing: .01em; }
+  #barName .tag { color: var(--accent); }
+  #barMeta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  #platoonSearch { position: relative; display: flex; gap: 8px; flex: 1 1 340px; min-width: 0; }
+  #platoonSearch .icon { position: absolute; left: 12px; top: 50%; translate: 0 -50%; color: var(--muted); pointer-events: none; }
+  .field {
+    min-height: 38px; padding: 0 12px; border: 0; border-radius: var(--radius-s);
+    background: var(--surface-2); color: var(--text); font: inherit;
+    box-shadow: inset 0 0 0 1px var(--line);
+    transition: box-shadow var(--duration-quick) var(--ease-smooth-out);
+  }
+  .field::placeholder { color: var(--muted); }
+  .field:hover { box-shadow: inset 0 0 0 1px #4a4a42; }
+  .field:focus { outline: none; box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px rgb(240 167 58 / .2); }
+  #platoonQuery { flex: 1; min-width: 0; padding-left: 38px; }
   #recent { display: flex; gap: 6px; flex-wrap: wrap; flex-basis: 100%; }
   #recent:empty { display: none; }
   #recent .chip {
-    display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 9px; font-size: 12px;
-    border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2);
+    display: inline-flex; align-items: center; gap: 2px; padding: 2px 2px 2px 10px; font-size: 13px;
+    border-radius: 999px; background: var(--surface-2); box-shadow: var(--shadow-1);
   }
-  #recent .chip button { border: 0; background: none; padding: 0 4px; color: var(--muted); }
-  #recent .chip button:hover { color: var(--text); }
-  #recent .chip .open { color: var(--text); padding: 0; }
+  #recent .chip .open { border: 0; background: none; padding: 4px 2px; color: var(--text); }
+  #recent .chip .open:hover { color: var(--accent); }
+  #recent .chip .icon-btn { width: 24px; height: 24px; border-radius: 999px; }
+  #recent .chip .icon-btn .icon { width: 13px; height: 13px; }
 
-  #platoonSearch { display: flex; gap: 6px; flex: 1 1 320px; min-width: 0; }
-  #platoonQuery {
-    flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
-    border-radius: 6px; padding: 9px 12px; font: inherit;
-  }
-  #platoonQuery:focus { outline: none; border-color: var(--gold); }
   #platoonResults {
-    margin: -6px 0 12px; max-height: 60vh; overflow: auto; display: flex; flex-direction: column; gap: 4px;
-    padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    display: flex; flex-direction: column; gap: 2px; margin: -6px 0 16px; padding: 6px;
+    max-height: min(60vh, 560px); overflow: auto;
+    background: var(--surface-1); border-radius: var(--radius-l); box-shadow: var(--shadow-2);
+    animation: panel-in var(--duration-slow) var(--ease-smooth-out);
   }
   #platoonResults:empty { display: none; }
-  #platoonResults > .muted { padding: 4px 2px; }
-  .empty-state {
-    text-align: center; padding: 48px 16px; color: var(--muted);
-    border: 1px dashed var(--line); border-radius: 8px;
-  }
-  .empty-state strong { display: block; color: var(--text); font-size: 16px; margin-bottom: 4px; }
-  body:not(.no-platoon) .empty-state, body:not([data-tab="players"]) .empty-state { display: none; }
-  body.no-platoon[data-tab="players"] .board-area { display: none; }
   #platoonResults button {
-    display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
-    background: var(--panel-2); padding: 6px 10px;
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; text-align: left;
+    border: 0; border-radius: var(--radius-s); background: none; color: var(--text);
+    transition: background-color var(--duration-quick) var(--ease-smooth-out);
   }
-  #platoonResults img { width: 32px; height: 32px; border-radius: 4px; flex: 0 0 32px; background: #000; }
-  #platoonResults .tag { color: var(--gold); font-weight: 600; }
-  .card.placeholder { opacity: .25; outline: 2px dashed var(--gold); }
-  .card.dragging { position: fixed; z-index: 100; pointer-events: none; cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,.6); transform: scale(1.05); }
+  #platoonResults button:hover, #platoonResults button:focus-visible { background: var(--surface-2); }
+  #platoonResults img { width: 34px; height: 34px; border-radius: 4px; flex: 0 0 34px; background: #000; box-shadow: 0 0 0 1px rgb(255 255 255 / .1); }
+  #platoonResults .tag { color: var(--accent); font-weight: 600; }
+  #platoonResults .muted { font-variant-numeric: tabular-nums; }
+  #platoonResults > .muted { padding: 6px 10px; }
+  @keyframes panel-in { from { opacity: 0; translate: 0 -6px; filter: blur(2px); } }
+
+  .empty-state {
+    display: grid; justify-items: center; gap: 6px; text-align: center;
+    padding: 72px 24px; color: var(--muted);
+    background: radial-gradient(120% 90% at 50% 0%, var(--surface-1), transparent 70%);
+    border-radius: var(--radius-l);
+  }
+  .empty-state h2 { margin: 0; color: var(--text); font: 700 26px/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+  .empty-state p { margin: 0; max-width: 46ch; text-wrap: pretty; }
+  body:not(.no-platoon) .empty-state, body:not([data-tab="players"]) .empty-state { display: none; }
+  body.no-platoon[data-tab="players"] .board-area { display: none !important; }
+
+  /* Board */
+  #board {
+    display: flex; flex-direction: column; gap: 2px; padding: 2px;
+    background: var(--bg); border-radius: var(--radius-l); box-shadow: var(--shadow-1);
+  }
+  .tier { display: flex; min-height: 96px; border-radius: var(--radius-m); overflow: hidden; background: var(--surface-1); }
+  .label {
+    width: 116px; flex: 0 0 116px; display: flex; align-items: center; justify-content: center;
+    padding: 8px; color: #17140d; text-align: center; word-break: break-word; outline: none;
+    font: 700 32px/1 var(--font-display); letter-spacing: .01em; cursor: grab;
+  }
+  .label.long { font-size: 16px; line-height: 1.15; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+  .label:focus { cursor: text; box-shadow: inset 0 0 0 2px rgb(23 20 13 / .75); }
+  .drop {
+    flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; padding: 4px;
+    min-height: 96px; min-width: 0;
+  }
+  .tier-tools {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    padding: 4px; background: var(--surface-2);
+    transition: opacity var(--duration-quick) var(--ease-smooth-out);
+  }
+  @media (hover: hover) {
+    .tier-tools { opacity: 0; }
+    .tier:hover .tier-tools, .tier:focus-within .tier-tools { opacity: 1; }
+  }
+  .tier-tools .swatch {
+    position: relative; width: 30px; height: 30px; display: grid; place-items: center; border-radius: var(--radius-s); cursor: pointer;
+  }
+  .tier-tools .swatch:hover { background: var(--surface-3); }
+  .tier-tools .swatch span { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 1px rgb(255 255 255 / .25); }
+  .tier-tools .swatch input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .grip { cursor: grab; touch-action: none; }
+  .tier-placeholder { opacity: .35; }
+  .tier-ghost { position: fixed; z-index: 100; pointer-events: none; box-shadow: var(--shadow-3), 0 0 0 2px var(--accent); }
+  body.tier-dragging, body.tier-dragging * { user-select: none !important; cursor: grabbing !important; }
+
+  #addTierBottom {
+    display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 8px; min-height: 40px;
+    border: 0; border-radius: var(--radius-m); background: transparent; color: var(--muted);
+    outline: 1px dashed var(--line); outline-offset: -1px;
+    transition-property: background-color, color;
+    transition-duration: var(--duration-quick);
+  }
+  #addTierBottom:hover { background: var(--surface-1); color: var(--text); }
+
+  /* Cards */
+  .card {
+    position: relative; width: 84px; height: 84px; flex: 0 0 auto; overflow: hidden;
+    border-radius: var(--radius-s); background: var(--surface-3);
+    cursor: grab; user-select: none; touch-action: none;
+    transition: filter var(--duration-quick) var(--ease-smooth-out);
+  }
+  .card:hover { filter: brightness(1.08); }
+  /* Image outline: pure white at low opacity, so it never reads as dirt on the edge. */
+  .card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); pointer-events: none; }
+  .card img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .card.weapon { width: 132px; background: radial-gradient(90% 80% at 50% 40%, #3a3a33, #24241f); }
+  .card.weapon img { object-fit: contain; padding: 8px 8px 20px; }
+  .card.map { width: 150px; }
+  .card .initials {
+    width: 100%; height: 100%; display: grid; place-items: center;
+    font: 700 28px/1 var(--font-display); color: #fff; letter-spacing: .02em;
+  }
+  .card .name {
+    position: absolute; inset: auto 0 0; padding: 14px 4px 3px;
+    background: linear-gradient(transparent, rgb(0 0 0 / .85));
+    color: #fff; font-size: 11.5px; font-weight: 500; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card .role {
+    position: absolute; top: 3px; left: 3px; padding: 1px 5px; border-radius: 4px;
+    background: rgb(0 0 0 / .7); color: var(--accent);
+    font: 600 10px/1.4 var(--font); letter-spacing: .04em; text-transform: uppercase;
+  }
+  .card.extra .role { color: #9cc7e8; }
+  .card.weapon .role { color: #d6d4c8; }
+  .card .note-dot {
+    position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; display: grid; place-items: center;
+    border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 1px 3px rgb(0 0 0 / .5);
+  }
+  .card .note-dot .icon { width: 11px; height: 11px; stroke-width: 2.25; }
+  .card.placeholder { opacity: .3; box-shadow: 0 0 0 2px var(--accent); }
+  .card.dragging { position: fixed; z-index: 100; pointer-events: none; cursor: grabbing; scale: 1.06; box-shadow: var(--shadow-3); }
   .card.hidden-by-filter { display: none; }
 
-  .pool-wrap { margin-top: 18px; }
-  .pool-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-  .pool-head h2 { margin: 0; font-size: 15px; }
-  .pool-head input[type=search], .add input, .pool-head select {
-    background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
-    border-radius: 6px; padding: 7px 10px; font: inherit; min-width: 0;
+  /* Unranked pool */
+  .pool-wrap { margin-top: 28px; }
+  .pool-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .pool-head h2 { margin: 0 6px 0 0; font: 700 22px/1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+  #poolCount { font: 500 13px var(--font); color: var(--muted); text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+  .search-field { position: relative; display: flex; }
+  .search-field .icon { position: absolute; left: 11px; top: 50%; translate: 0 -50%; width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
+  .search-field .field { padding-left: 34px; width: 220px; max-width: 100%; }
+  select.field { padding-right: 8px; cursor: pointer; }
+  .add { display: flex; gap: 8px; }
+  #pool {
+    min-height: 104px; padding: 6px; border-radius: var(--radius-l);
+    background: var(--surface-1); box-shadow: var(--shadow-1);
   }
-  #pool { border: 1px dashed var(--line); border-radius: 8px; min-height: 100px; }
-  .add { display: flex; gap: 6px; }
-  .muted { color: var(--muted); font-size: 12px; }
-  footer { margin-top: 24px; color: var(--muted); font-size: 12px; }
-  footer a { color: inherit; }
+  .hint { margin: 12px 2px 0; color: var(--muted); font-size: 13px; text-wrap: pretty; max-width: 90ch; }
+  .hint kbd { font: 600 12px var(--font); padding: 1px 6px; border-radius: 4px; background: var(--surface-2); color: var(--text); }
+  footer { margin-top: 40px; padding-top: 16px; box-shadow: 0 -1px 0 var(--line); color: var(--muted); font-size: 13px; }
+  footer p { margin: 0; max-width: 90ch; text-wrap: pretty; }
+  footer a { color: var(--text); text-underline-offset: 3px; text-decoration-color: rgb(236 235 228 / .35); }
+  footer a:hover { text-decoration-color: var(--accent); }
 
+  /* Context menu: opens with a small scale-in, closes quicker than it opens. */
   #ctx {
-    position: fixed; z-index: 200; background: var(--panel-2); border: 1px solid var(--line);
-    border-radius: 6px; padding: 4px; display: none; min-width: 160px; box-shadow: 0 6px 20px rgba(0,0,0,.5);
+    position: fixed; z-index: 200; min-width: 200px; padding: 4px;
+    background: var(--surface-2); border-radius: var(--radius-m); box-shadow: var(--shadow-3);
+    opacity: 0; scale: .97; visibility: hidden; transform-origin: top left;
+    transition: opacity var(--duration-quick) var(--ease-smooth-out), scale var(--duration-quick) var(--ease-smooth-out), visibility 0s var(--duration-quick);
   }
-  #ctx button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 6px 10px; }
-  #ctx button:hover { background: var(--line); }
+  #ctx.open {
+    opacity: 1; scale: 1; visibility: visible;
+    transition: opacity var(--duration-fast) var(--ease-smooth-out), scale var(--duration-fast) var(--ease-smooth-out), visibility 0s;
+  }
+  #ctx button {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; text-align: left;
+    border: 0; border-radius: var(--radius-s); background: none; color: var(--text); font-size: 14px;
+  }
+  #ctx button:hover, #ctx button:focus-visible { background: var(--surface-3); }
+  #ctx hr { border: 0; height: 1px; margin: 4px 6px; background: var(--line); }
 
-  @media (max-width: 600px) {
-    .label { width: 64px; flex-basis: 64px; font-size: 15px; }
+  /* Note dialog */
+  #noteDlg {
+    width: min(460px, calc(100vw - 32px)); padding: 20px; border: 0; border-radius: var(--radius-l);
+    background: var(--surface-1); color: var(--text); box-shadow: var(--shadow-3);
+  }
+  #noteDlg[open] { animation: dialog-in var(--duration-fast) var(--ease-smooth-out); }
+  #noteDlg::backdrop { background: rgb(8 8 6 / .6); }
+  #noteDlg h3 { margin: 0 0 4px; font: 700 22px/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+  #noteDlg textarea { display: block; width: 100%; min-height: 140px; margin: 14px 0; padding: 10px 12px; resize: vertical; line-height: 1.5; }
+  #noteDlg .row { display: flex; gap: 8px; }
+  @keyframes dialog-in { from { opacity: 0; scale: .96; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+  }
+
+  @media (max-width: 640px) {
+    /* A sticky header would eat a third of a phone screen; let it scroll away. */
+    header { position: relative; }
+    .topbar { padding: 12px 16px 0; }
+    .tier-tools { padding: 2px; gap: 0; }
+    .tier-tools .icon-btn, .tier-tools .swatch { width: 26px; height: 26px; }
+    main { padding: 16px 16px 40px; }
+    .brand h1 { font-size: 22px; }
+    .actions .btn .label-text { display: none; }
+    .actions .btn { padding: 0 11px; }
+    .label { width: 64px; flex-basis: 64px; font-size: 22px; }
+    .label.long { font-size: 11px; }
     .card { width: 64px; height: 64px; }
     .card.weapon { width: 100px; }
     .card.map { width: 112px; }
-    .card .name { font-size: 9px; }
+    .card .name { font-size: 10px; }
     .tier, .drop { min-height: 72px; }
-    .tier-tools { padding: 2px; }
-    .tier-tools input[type=color] { width: 20px; }
-    nav.tabs button { padding: 10px 10px; }
+    .search-field, .search-field .field { width: 100%; }
+    .add { width: 100%; }
+    .add .field { flex: 1; }
   }
 </style>
 </head>
 <body data-tab="players">
 <header>
-  <img alt="" src="https://eaassets-a.akamaihd.net/battlelog/bf-emblems/prod_default/exclusive/256/Default_V.png">
-  <div>
-    <h1><span>BF5</span> Tier List</h1>
-    <div id="status">Loading…</div>
+  <div class="topbar">
+    <div class="brand">
+      <h1>BF5 <span>Tier List</span></h1>
+      <p id="status" aria-live="polite">Loading…</p>
+    </div>
+    <div class="actions">
+      <button id="refresh" class="btn ghost players-only board-area" aria-label="Refresh roster" title="Fetch the roster again from gametools">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span class="label-text">Refresh roster</span>
+      </button>
+      <button id="addTier" class="btn ghost board-area" aria-label="Add tier" title="Add a tier">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span class="label-text">Add tier</span>
+      </button>
+      <button id="reset" class="btn ghost danger board-area" aria-label="Reset this tab" title="Send everything on this tab back to Unranked">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span class="label-text">Reset</span>
+      </button>
+      <button id="png" class="btn primary board-area" aria-label="Save image" title="Download this tier list as a PNG">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg><span class="label-text">Save image</span>
+      </button>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Tier lists">
+      <button data-tab="players">Players<span class="count"></span></button>
+      <button data-tab="weapons">Weapons<span class="count"></span></button>
+      <button data-tab="vehicles">Vehicles<span class="count"></span></button>
+      <button data-tab="maps">Maps<span class="count"></span></button>
+      <span class="tab-indicator" aria-hidden="true"></span>
+    </nav>
   </div>
-  <div class="spacer"></div>
-  <button id="refresh" class="players-only board-area" title="Fetch the roster again from gametools">↻ Refresh roster</button>
-  <button id="addTier" class="board-area">+ Tier</button>
-  <button id="png" class="primary board-area">Save image</button>
-  <button id="reset" class="danger board-area" title="Send everything on this tab back to Unranked">Reset</button>
-  <nav class="tabs" id="tabs">
-    <button data-tab="players">Players<span class="count"></span></button>
-    <button data-tab="weapons">Weapons<span class="count"></span></button>
-    <button data-tab="vehicles">Vehicles<span class="count"></span></button>
-    <button data-tab="maps">Maps<span class="count"></span></button>
-  </nav>
 </header>
 
 <main>
@@ -236,55 +399,61 @@
     <div id="barCurrent">
       <img id="barEmblem" alt="">
       <div>
-        <div class="muted">Platoon</div>
         <div id="barName"></div>
+        <div id="barMeta"></div>
       </div>
     </div>
-    <form id="platoonSearch">
-      <input id="platoonQuery" type="search" placeholder="Search any BF5 platoon by name or tag, or paste its ID / gametools link" autocomplete="off">
-      <button type="submit" class="primary">Search</button>
+    <form id="platoonSearch" role="search">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="platoonQuery" class="field" type="search" placeholder="Find any BF5 platoon by name or tag, or paste its ID / gametools link" autocomplete="off" aria-label="Find a platoon">
+      <button type="submit" class="btn primary">Search</button>
     </form>
     <div id="recent"></div>
   </div>
   <div id="platoonResults" class="players-only"></div>
   <div class="empty-state">
-    <strong>Pick a platoon to rank its players</strong>
-    Search for it above. Results are sorted by member count, biggest first.
+    <h2>Rank a platoon's players</h2>
+    <p>Search above for any Battlefield V platoon. Its members load as cards you can drag into tiers. Results are sorted by member count, so the biggest platoon with that name comes first.</p>
   </div>
 
   <div id="board" class="board-area"></div>
-  <button id="addTierBottom" type="button" class="board-area">+ Add tier</button>
+  <button id="addTierBottom" type="button" class="board-area">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add tier
+  </button>
 
   <section class="pool-wrap board-area">
     <div class="pool-head">
-      <h2>Unranked <span id="poolCount" class="muted"></span></h2>
-      <input id="filter" type="search" placeholder="Filter…">
-      <select id="typeFilter" class="typed-only" title="Which types to show in Unranked"></select>
+      <h2>Unranked <span id="poolCount"></span></h2>
+      <label class="search-field">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="filter" class="field" type="search" placeholder="Filter…" aria-label="Filter unranked cards">
+      </label>
+      <select id="typeFilter" class="field typed-only" aria-label="Which types to show in Unranked"></select>
       <div class="spacer"></div>
       <form class="add players-only" id="addForm">
-        <input id="addName" placeholder="Add player by EA name" autocomplete="off">
-        <button type="submit">Add</button>
+        <input id="addName" class="field" placeholder="Add player by EA name" autocomplete="off" aria-label="Add player by EA name">
+        <button type="submit" class="btn">Add</button>
       </form>
     </div>
     <div id="pool" class="drop"></div>
-    <p class="muted">Drag cards between tiers (works with touch too). Double-click a card to add a note (hover to read it). Right-click / long-press a card for more options. Click a tier name to rename it; drag the name (or ⠿) to move the whole tier. Each tab has its own tiers, and everything saves automatically in this browser.</p>
+    <p class="hint">Drag cards between tiers (touch works too). <kbd>Double-click</kbd> a card to add a note; hover to read it. <kbd>Right-click</kbd> or long-press a card for more. Click a tier name to rename it, and drag it to move the whole tier. Each tab keeps its own tiers, saved automatically in this browser.</p>
   </section>
 
-  <footer>Player, platoon and server data from <a href="https://gametools.network" target="_blank" rel="noopener">gametools.network</a>. Its roster endpoint often lists only part of a platoon, so members it leaves out are found by scanning live servers for the platoon's tag while the page is open (each find is checked against the player's profile, since tags aren't unique). Anyone still missing can be added by name. Your tier lists are stored only in this browser. Not affiliated with EA or DICE.</footer>
+  <footer><p>Player, platoon and server data from <a href="https://gametools.network" target="_blank" rel="noopener">gametools.network</a>. Its roster endpoint often lists only part of a platoon, so members it leaves out are found by scanning live servers for the platoon's tag while the page is open (each find is checked against the player's profile, since tags aren't unique). Anyone still missing can be added by name. Your tier lists are stored only in this browser. Not affiliated with EA or DICE.</p></footer>
 </main>
 
-<div id="ctx"></div>
+<div id="ctx" role="menu"></div>
 
 <dialog id="noteDlg">
   <form method="dialog">
     <h3 id="noteTitle">Note</h3>
     <div class="muted">Why it's in this tier, or anything else worth remembering.</div>
-    <textarea id="noteText"></textarea>
+    <textarea id="noteText" class="field"></textarea>
     <div class="row">
-      <button type="button" id="noteClear" class="danger">Delete note</button>
+      <button type="button" id="noteClear" class="btn ghost danger">Delete note</button>
       <div class="spacer"></div>
-      <button type="button" id="noteCancel">Cancel</button>
-      <button type="submit" class="primary">Save</button>
+      <button type="button" id="noteCancel" class="btn ghost">Cancel</button>
+      <button type="submit" class="btn primary">Save note</button>
     </div>
   </form>
 </dialog>
@@ -296,6 +465,33 @@
 
 const $ = (s) => document.querySelector(s);
 const setStatus = (t) => { $("#status").textContent = t; };
+
+/** Lucide icon paths (24×24, stroked), drawn inline so saved PNGs include them. */
+const ICONS = {
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  grip: '<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>',
+  pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+  trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+};
+function icon(name) {
+  const t = document.createElement("template");
+  t.innerHTML = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+  return t.content.firstChild;
+}
+/** A square icon-only button; the title doubles as its accessible name. */
+function iconBtn(name, title, onClick, extraClass = "") {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = `icon-btn ${extraClass}`.trim();
+  b.title = title;
+  b.setAttribute("aria-label", title);
+  b.append(icon(name));
+  if (onClick) b.addEventListener("click", onClick);
+  return b;
+}
 
 const API = "https://api.gametools.network";
 /** ouLuminescence, whose roster endpoint is missing members we know about (see OUL_KNOWN_EXTRA). */
@@ -332,11 +528,12 @@ const CATALOG_TABS = ["weapons", "vehicles", "maps"];
 const NON_GUNS = ["Gadget", "Melee"];
 
 const UNKNOWN_LABEL = "Unknown / haven't seen playing";
-const BASE_TIERS = [["S", "#ff7f7f"], ["A", "#ffbf7f"], ["B", "#ffdf7f"], ["C", "#ffff7f"], ["D", "#bfff7f"], ["F", "#7fbfff"]];
+/** The familiar S–F tier hues, evened out in lightness so no row shouts over the others. */
+const BASE_TIERS = [["S", "#f0857a"], ["A", "#f2a86a"], ["B", "#efc865"], ["C", "#dcd772"], ["D", "#a8d27e"], ["F", "#82b4e0"]];
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 const freshBoard = (tab) => ({
-  tiers: [...BASE_TIERS, ...(tab === "players" ? [[UNKNOWN_LABEL, "#9a9ca3"]] : [])]
+  tiers: [...BASE_TIERS, ...(tab === "players" ? [[UNKNOWN_LABEL, "#9c9a8e"]] : [])]
     .map(([label, color]) => ({ id: uid(), label, color, items: [] })),
   pool: [],
 });
@@ -595,9 +792,8 @@ function showCount(extra = "") {
   const members = Object.values(p.roster).filter((r) => r.member).length;
   const missing = (p.size || 0) - members;
   setStatus(
-    `Found ${members} of ${p.size || "?"} members` +
-    (missing > 0 ? ` · ${missing} not found yet (they show up when the scan sees them online, or add them by name)` : "") +
-    (p.lastScan ? ` · last server scan ${new Date(p.lastScan).toLocaleTimeString()}` : "") +
+    `${members} of ${p.size || "?"} members found` +
+    (missing > 0 ? ` · the other ${missing} appear once they're seen online, or add them by name` : "") +
     (extra ? ` · ${extra}` : ""),
   );
 }
@@ -735,7 +931,7 @@ function fillCard(el, p) {
   } else el.append(initials(p.name));
   const role = badge(p, id);
   if (role) { const r = document.createElement("span"); r.className = "role"; r.textContent = role; el.append(r); }
-  if (p.note) { const d = document.createElement("span"); d.className = "note-dot"; d.textContent = "✎"; el.append(d); }
+  if (p.note) { const d = document.createElement("span"); d.className = "note-dot"; d.append(icon("pencil")); el.append(d); }
   const n = document.createElement("div"); n.className = "name"; n.textContent = p.name; el.append(n);
   const sub = state.tab === "players" ? rosterOf(id).role : p.type;
   el.title = `${p.name}${sub ? " · " + sub : ""}${p.note ? "\n\n" + p.note : ""}`;
@@ -766,7 +962,8 @@ function renderPlatoon() {
     $("#barEmblem").src = p.emblem || DEFAULT_EMBLEM;
     $("#barName").innerHTML = "";
     if (p.tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = `[${p.tag}] `; $("#barName").append(t); }
-    $("#barName").append(document.createTextNode(`${p.name || "…"}${p.size ? ` · ${p.size} members` : ""}`));
+    $("#barName").append(document.createTextNode(p.name || "…"));
+    $("#barMeta").textContent = p.size ? `${p.size} members` : "";
   }
 
   // Other platoons opened before, for one-click switching.
@@ -778,11 +975,25 @@ function renderPlatoon() {
     chip.className = "chip";
     const open = btn(other.tag ? `[${other.tag}] ${other.name}` : other.name, `Switch to ${other.name}`, () => switchPlatoon(other.id));
     open.className = "open";
-    const del = btn("✕", `Forget ${other.name} (deletes its tiers)`, () => forgetPlatoon(other.id));
+    const del = iconBtn("x", `Forget ${other.name} (deletes its tiers)`, () => forgetPlatoon(other.id));
     chip.append(open, del);
     recent.append(chip);
   }
 }
+
+/** Slides the tab underline to the open tab (it animates via CSS; the first placement doesn't). */
+function moveTabIndicator() {
+  const active = document.querySelector(`#tabs button[data-tab="${state.tab}"]`);
+  const bar = $(".tab-indicator");
+  if (!active || !bar) return;
+  if (!bar.dataset.placed) bar.style.transition = "none";
+  bar.style.width = `${active.offsetWidth}px`;
+  bar.style.translate = `${active.offsetLeft}px 0`;
+  if (!bar.dataset.placed) { bar.offsetWidth; bar.style.transition = ""; bar.dataset.placed = "1"; }
+}
+addEventListener("resize", moveTabIndicator);
+// Barlow loads after first paint and changes the tab widths.
+document.fonts?.ready.then(moveTabIndicator);
 
 function render() {
   renderPlatoon();
@@ -794,6 +1005,7 @@ function render() {
     const ranked = tiers.reduce((n, t) => n + t.items.length, 0);
     b.querySelector(".count").textContent = ranked ? `(${ranked})` : "";
   }
+  moveTabIndicator();
   $("#filter").placeholder = TABS[state.tab].filter;
   $("#noteText").placeholder = TABS[state.tab].note;
 
@@ -825,21 +1037,28 @@ function render() {
 
     const tools = document.createElement("div");
     tools.className = "tier-tools";
+    // A round swatch over an invisible native color input, so the picker still opens on click.
+    const swatch = document.createElement("label");
+    swatch.className = "swatch";
+    swatch.title = "Tier color";
+    const dot = document.createElement("span");
+    dot.style.background = t.color;
     const color = document.createElement("input");
-    color.type = "color"; color.value = t.color; color.title = "Tier color";
-    color.addEventListener("input", () => { t.color = color.value; label.style.background = t.color; save(); });
+    color.type = "color"; color.value = t.color; color.setAttribute("aria-label", "Tier color");
+    color.addEventListener("input", () => { t.color = color.value; label.style.background = dot.style.background = t.color; save(); });
+    swatch.append(dot, color);
     const grip = document.createElement("div");
-    grip.className = "grip";
-    grip.textContent = "⠿";
+    grip.className = "grip icon-btn";
     grip.title = "Drag to move this tier";
-    const del = btn("✕", "Delete tier (its cards go back to Unranked)", () => {
+    grip.append(icon("grip"));
+    const del = iconBtn("trash", "Delete tier (its cards go back to Unranked)", () => {
       if (t.items.length && !confirm(`Delete tier "${t.label}"? Its ${t.items.length} ${TABS[state.tab].noun} go back to Unranked.`)) return;
       board().pool.push(...t.items);
       board().tiers = board().tiers.filter((x) => x.id !== t.id);
       save(); render();
       if (state.tab !== "players") showTabStatus();
-    });
-    tools.append(grip, color, del);
+    }, "danger");
+    tools.append(grip, swatch, del);
 
     row.append(label, drop, tools);
     boardEl.append(row);
@@ -1031,13 +1250,30 @@ function openCtx(card, x, y) {
   const id = card.dataset.id;
   const p = entity(id);
   ctx.innerHTML = "";
-  const item = (text, fn) => { const b = btn(text, "", () => { closeCtx(); fn(); }); ctx.append(b); };
-  item(p?.note ? "✎ Edit note…" : "✎ Add note…", () => openNote(id));
-  for (const t of board().tiers) item(`Move to ${t.label || "(unnamed)"}`, () => moveTo(id, t.id));
-  item("Send back to Unranked", () => moveTo(id, "pool"));
+  /** A menu row: a leading icon (or tier color dot), then the label. */
+  const item = (lead, text, fn) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "menuitem");
+    b.append(lead, document.createTextNode(text));
+    b.addEventListener("click", () => { closeCtx(); fn(); });
+    ctx.append(b);
+  };
+  const dot = (color) => {
+    const s = document.createElement("span");
+    s.style.cssText = `width:10px;height:10px;margin:0 4px;border-radius:50%;flex:0 0 10px;background:${color}`;
+    return s;
+  };
+  const sep = () => ctx.append(document.createElement("hr"));
+
+  item(icon("pencil"), p?.note ? "Edit note…" : "Add note…", () => openNote(id));
+  sep();
+  for (const t of board().tiers) item(dot(t.color), `Move to ${t.label || "(unnamed)"}`, () => moveTo(id, t.id));
+  item(icon("undo"), "Back to Unranked", () => moveTo(id, "pool"));
   if (state.tab === "players") {
-    item("Open on gametools ↗", () => window.open(`https://gametools.network/stats/pc/playerid/${id}?game=bfv`, "_blank", "noopener"));
-    if (rosterOf(id).manual) item("Remove player", () => {
+    sep();
+    item(icon("external"), "Stats on gametools", () => window.open(`https://gametools.network/stats/pc/playerid/${id}?game=bfv`, "_blank", "noopener"));
+    if (rosterOf(id).manual) item(icon("trash"), "Remove player", () => {
       for (const t of board().tiers) t.items = t.items.filter((x) => x !== id);
       board().pool = board().pool.filter((x) => x !== id);
       // The player record stays: other platoons' boards may still use it.
@@ -1045,12 +1281,16 @@ function openCtx(card, x, y) {
       save(); render();
     });
   }
-  ctx.style.display = "block";
   const w = ctx.offsetWidth, h = ctx.offsetHeight;
-  ctx.style.left = Math.min(x, innerWidth - w - 8) + "px";
-  ctx.style.top = Math.min(y, innerHeight - h - 8) + "px";
+  const left = Math.min(x, innerWidth - w - 8);
+  const top = Math.min(y, innerHeight - h - 8);
+  ctx.style.left = left + "px";
+  ctx.style.top = top + "px";
+  // Scale in from the corner nearest the pointer.
+  ctx.style.transformOrigin = `${x - left}px ${y - top}px`;
+  ctx.classList.add("open");
 }
-const closeCtx = () => { ctx.style.display = "none"; };
+const closeCtx = () => { ctx.classList.remove("open"); };
 document.addEventListener("contextmenu", (e) => {
   const card = e.target.closest(".card");
   if (!card) return;
