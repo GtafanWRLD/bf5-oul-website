@@ -87,10 +87,16 @@ window.Sensitivity = (() => {
           </div>
           <details class="gs-group sens-math">
             <summary>The maths, if you want to check it</summary>
-            <p>The FOV slider is your <b>vertical</b> view angle. Half your screen's height in the 3D world is tan(FOV ÷ 2). The ring sits at <code>k = coefficient × tan(FOV ÷ 2)</code>.</p>
-            <p>At zoom <i>z</i>, USA scales your speed by <code>atan(k ÷ z) ÷ atan(k)</code>. At coefficient 0 that becomes just <code>1 ÷ z</code>, so the slider value is what you want divided by what you have:</p>
-            <p><code>value = z × atan(k ÷ z) ÷ atan(k)</code></p>
-            <p>Example: 1920×1080 at FOV 105 on a 6× scope. k = 1.778 × tan(52.5°) = 2.317, then 6 × atan(0.386) ÷ atan(2.317) = 1.90, so you'd type <b>190%</b>.</p>
+            <p>The FOV slider is your <b>vertical</b> view angle. Half your screen's height in the 3D world is tan(FOV ÷ 2), so the ring sits at:</p>
+            <math display="block"><mi>k</mi><mo>=</mo><mi>c</mi><mo>·</mo><mi>tan</mi><mo>(</mo><mfrac><mtext>FOV</mtext><mn>2</mn></mfrac><mo>)</mo></math>
+            <p>where <i>c</i> is the coefficient (178% = 1.78). At zoom <i>z</i>, USA scales your speed by:</p>
+            <math display="block"><mfrac><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mfrac><mi>k</mi><mi>z</mi></mfrac><mo>)</mo></mrow><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mi>k</mi><mo>)</mo></mrow></mfrac></math>
+            <p>(tan<sup>−1</sup> is the inverse tan button on a calculator, in radians.) At coefficient 0 that becomes just 1 ÷ <i>z</i>, so the slider value is what you want divided by what you have:</p>
+            <math display="block"><mtext>value</mtext><mo>=</mo><mi>z</mi><mo>·</mo><mfrac><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mfrac><mi>k</mi><mi>z</mi></mfrac><mo>)</mo></mrow><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mi>k</mi><mo>)</mo></mrow></mfrac></math>
+            <p>Example: 1920×1080 at FOV 105 on a 6× scope:</p>
+            <math display="block"><mi>k</mi><mo>=</mo><mn>1.778</mn><mo>·</mo><mi>tan</mi><mo>(</mo><mn>52.5</mn><mo>°</mo><mo>)</mo><mo>=</mo><mn>2.317</mn></math>
+            <math display="block"><mtext>value</mtext><mo>=</mo><mn>6</mn><mo>·</mo><mfrac><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mn>0.386</mn><mo>)</mo></mrow><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mn>2.317</mn><mo>)</mo></mrow></mfrac><mo>=</mo><mn>1.90</mn></math>
+            <p>so you'd type <b>190%</b>.</p>
             <p>1× is always 100% because nothing is zoomed. Big scopes level off near a ceiling (about 199% at 16:9, FOV 105), which is why 8× and 10× come out almost the same.</p>
             <p class="sens-note">Source: DICE's design write-up "Consistent 360 degree distance aim".</p>
           </details>
