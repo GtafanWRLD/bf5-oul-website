@@ -124,19 +124,16 @@ window.GunStats = (() => {
 
   // ---------- what's shown ----------
 
-  const ms = (v) => Math.round(v);
   /** Table columns. `better` says which end of the range fills the meter and sorts first. */
   const COLUMNS = [
     { key: "dmg", label: "Damage", title: "Damage per shot, close range → long range", better: "high", get: (s) => shotDamage(s, 0) },
     { key: "rpm", label: "RPM", title: "Rate of fire", better: "high", get: (s) => s.RoF, fmt: (v) => v },
-    { key: "ttk10", label: "TTK 10 m", unit: "ms", title: "Time to kill at 10 m with body shots (bullet travel not included)", better: "low", get: (s) => ttk(s, 10), fmt: ms },
-    { key: "ttk50", label: "TTK 50 m", unit: "ms", title: "Time to kill at 50 m with body shots (bullet travel not included)", better: "low", get: (s) => ttk(s, 50), fmt: ms },
     { key: "vel", label: "Velocity", unit: "m/s", title: "Muzzle velocity", better: "high", get: (s) => s.InitialSpeed, fmt: (v) => v },
     { key: "mag", label: "Mag", title: "Magazine size", better: "high", get: (s) => s.MagSize, fmt: (v) => v },
     { key: "reload", label: "Reload", unit: "s", title: "Reload with rounds left (stripper-clip reload for bolt-actions)", better: "low", get: (s) => reloadTime(s), fmt: (v) => v.toFixed(2) },
   ];
   const SORTS = [
-    ["name", "Name"], ["dmg", "Damage"], ["rpm", "Fire rate"], ["ttk10", "Time to kill, 10 m"], ["ttk50", "Time to kill, 50 m"],
+    ["name", "Name"], ["dmg", "Damage"], ["rpm", "Fire rate"],
     ["vel", "Bullet velocity"], ["mag", "Magazine size"], ["reload", "Reload time"],
   ];
 

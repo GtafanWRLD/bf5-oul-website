@@ -352,7 +352,7 @@
   .gs-table { display: flex; flex-direction: column; gap: 2px; }
   .gs-head, .gs-row {
     display: grid; align-items: center; gap: 12px;
-    grid-template-columns: minmax(200px, 2.2fr) 112px repeat(6, minmax(56px, 1fr));
+    grid-template-columns: minmax(200px, 2.2fr) 112px repeat(4, minmax(64px, 1fr));
     padding: 0 12px;
   }
   /* Loadout-screen style group titles: class in amber, then the weapon type. */
@@ -535,7 +535,7 @@
   @media (max-width: 900px) {
     .vu-detail-top { grid-template-columns: 1fr; }
     .gs-head, .gs-row { grid-template-columns: minmax(150px, 1fr) repeat(3, 64px); gap: 10px; }
-    [data-col="dmg"], [data-col="vel"], [data-col="mag"], [data-col="reload"] { display: none; }
+    [data-col="vel"], [data-col="reload"], .gs-row .gs-spark { display: none; }
     .gs-detail-top { grid-template-columns: 1fr; }
   }
   @media (max-width: 640px) {
