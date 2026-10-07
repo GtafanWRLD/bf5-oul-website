@@ -110,13 +110,13 @@ window.VehicleUpgrades = (() => {
       list.append(h("p", "gs-empty", "No vehicle matches that."));
       return;
     }
-    // Grouped by type, then faction (vehicles without wiki data last).
+    // Grouped by type, then faction (vehicles without an upgrade tree last).
     for (const [type, label] of TYPES) {
       for (const faction of [...FACTIONS, null]) {
         const group = shown.filter((v) => v.type === type && (v.faction || null) === faction);
         if (!group.length) continue;
         const gh = h("div", "gs-group-head");
-        gh.append(h("span", "gs-group-cls", label), h("span", "gs-group-type", faction || "Not on the wiki yet"), h("span", "gs-group-n", String(group.length)));
+        gh.append(h("span", "gs-group-cls", label), h("span", "gs-group-type", faction || "No upgrade tree on the wiki"), h("span", "gs-group-n", String(group.length)));
         list.append(gh);
         for (const v of group) list.append(row(v));
       }

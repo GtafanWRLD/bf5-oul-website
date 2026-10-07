@@ -74,25 +74,39 @@ for (const section of specsText.split(/\n(?====[^=])|\n(?=\|-\|)/)) {
   vehicles.push({ name, article, faction, type: cat?.type || null, image: cat?.image || null, tree, partial: depth < 6 });
 }
 
+/**
+ * Summer 2020 planes the upgrades page never got. Their trees are in their article's infobox
+ * ("Rank 1 … Rank 6"); checked against in-game screenshots. Catalog name → [article, infobox name, in-game name].
+ */
+const ARTICLE_TREES = {
+  "P51d Fighter": ["P-51", "P51D", "P51D Fighter"],
+  "P51k Fighter": ["P-51", "P51K", "P51K Fighter"],
+  "A-20 Bomber": ["A-20", "A-20 Bomber"],
+  "P-70 Night Fighter": ["A-20", "P-70 Night Fighter"],
+};
+
 // Tanks and planes the wiki's upgrade page doesn't list. The C-47 is a transport with no upgrades.
 const listed = new Set(vehicles.map((v) => key(CATALOG_NAMES[v.name] || v.name)));
 for (const v of window.CATALOG.vehicles) {
   if (!["Tanks", "Planes"].includes(v.type) || listed.has(key(v.name)) || key(v.name) === "c47") continue;
-  vehicles.push({ name: v.name.replace(/\b([a-z])/g, (c) => c.toUpperCase()), article: null, faction: null, type: v.type, image: v.image, tree: [], partial: false });
+  const name = v.name.replace(/\b([a-z])/g, (c) => c.toUpperCase());
+  const [article, infobox, shown] = Object.entries(ARTICLE_TREES).find(([n]) => key(n) === key(v.name))?.[1] || [];
+  vehicles.push({ name: shown || name, article, infobox, faction: article ? "USA" : null, type: v.type, image: v.image, tree: [], partial: false });
 }
 
 // ---------- loadouts (wiki infoboxes) ----------
 
 /** The Infobox/vehicle blocks in an article's Battlefield V section. */
 function bfvInfoboxes(text) {
+  // Multi-game articles have a Battlefield V section; BF5-only ones (P-51, A-20) are the whole page.
   const start = text.search(/^==\s*Battlefield V\s*==\s*$/m);
-  if (start < 0) return [];
-  const rest = text.slice(start + 5);
-  const end = rest.search(/^==[^=].*==\s*$/m);
+  const rest = start < 0 ? text : text.slice(start + 5);
+  const end = start < 0 ? -1 : rest.search(/^==[^=].*==\s*$/m);
   const section = end < 0 ? rest : rest.slice(0, end);
   // Infoboxes nest templates and don't always close on their own line, so match the braces.
   const bodies = [];
-  for (const m of section.matchAll(/\{\{\s*Infobox\/vehicle/gi)) {
+  // Older articles use {{Infobox/vehicle}}, the 2020 ones (P-51, A-20) {{Vehiclebox}}.
+  for (const m of section.matchAll(/\{\{\s*(?:Infobox\/vehicle|Vehiclebox)/gi)) {
     let depth = 0, i = m.index;
     for (; i < section.length - 1; i++) {
       if (section.startsWith("{{", i)) { depth++; i++; } else if (section.startsWith("}}", i)) { depth--; i++; if (!depth) break; }
@@ -123,16 +137,35 @@ function loadout(f) {
   };
 }
 
+/** Upgrade descriptions by name, from every tree on the upgrades page, for trees that only list names. */
+const descs = new Map(vehicles.flatMap((v) => v.tree.flat()).map((s) => [key(s.name), s.desc]));
+// Descriptions read off the in-game specialization screen.
+descs.set(key("6x HMG"), "6x heavy machine guns with an intermediate rate of fire and high projectile velocity, good for medium range fighting.");
+descs.set(key("6x HMGs"), descs.get(key("6x HMG")));
+descs.set(key("2x 20mm Cannons"), "2x 20mm long range cannons with high impact damage.");
+descs.set(key("4x 20mm Cannons"), "4x 20mm long range cannons with high impact damage.");
+
 const articles = new Map();
 for (const v of vehicles) {
   // Vehicles without an upgrade entry: try an article under their own name.
   const page = v.article || v.name;
   if (!articles.has(page)) articles.set(page, bfvInfoboxes(await wikitext(page)));
   const boxes = articles.get(page);
-  const box = boxes.find((b) => key(clean(b.name || "")) === key(v.name)) || (v.article && boxes.length === 1 ? boxes[0] : null);
+  const box = boxes.find((b) => key(clean(b.name || "")) === key(v.infobox || v.name)) || (v.article && boxes.length === 1 ? boxes[0] : null);
   v.loadout = box ? loadout(box) : null;
+  // A tree from the infobox's "Rank 1 … Rank 6" list, when the upgrades page had none.
+  if (!v.tree.length && box?.upgrades) {
+    v.tree = box.upgrades.split(/Rank \d/i).slice(1)
+      .map((rank) => clean(rank.replace(/<\/?small>/gi, "")).split(/\s*·\s*/).filter(Boolean).map((name) => ({ name, desc: descs.get(key(name)) || "" })))
+      .filter((rank) => rank.length);
+    v.partial = v.tree.length < 6;
+  }
   delete v.article;
+  delete v.infobox;
 }
+// The P-70's infobox says 8x M8 rockets by default; the game shows 6x (in-game screenshot).
+const p70 = vehicles.find((v) => v.name === "P-70 Night Fighter")?.loadout;
+if (p70) p70.equipment = p70.equipment.map((slot) => slot.map((s) => (s === "8x M8 Rockets" ? "6x M8 Rockets" : s)));
 
 // ---------- upgrade numbers (Gamepressure) ----------
 
