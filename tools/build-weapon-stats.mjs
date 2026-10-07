@@ -1,17 +1,20 @@
 // Builds weapon-stats.js: BFV gun stats for the Gun stats tab.
 //
-// The data is sym.gg's datamine (the same file their legacy charts page loads). It ships every
-// specialization combo as a full 250-field record (10 MB), so this keeps the fields the page shows
-// and stores each combo as a diff against the stock gun.
+// Base data is sym.gg's datamine (the same file their legacy charts page loads): every
+// specialization combo as a full 250-field record (10 MB); this keeps the fields the page shows
+// and stores each combo as a diff against the stock gun. Fire rate, damage curve, velocity,
+// magazine and reload times are then taken from each gun's BFV infobox on the Battlefield wiki,
+// including the per-upgrade values it lists; guns without one keep sym's figures.
 //
 //   node tools/build-weapon-stats.mjs
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { parseWeaponBox } from "./wiki-weapon-stats.mjs";
 
 const SOURCE = "https://sym.gg/legacy/pages/bfv/data/bfv_P.json";
 
 const KEEP = [
-  "Damages", "Dmg_distances", "ShotsPerShell", "RoF", "BRoF", "RPM", "ShotsPerBurst",
+  "Damages", "Dmg_distances", "ShotsPerShell", "RoF", "BRoF", "RPM", "MagText", "ShotsPerBurst",
   "InitialSpeed", "Drag", "BDrop", "MagSize", "Ammo",
   "ReloadLeft", "ReloadEmpty", "ReloadSpeed", "StripReloadTime", "SingleBulletReloadTime", "StripClipSize",
   "DeployTime", "SprintRecoverTimeMultiplier", "HorDispersion",
@@ -189,6 +192,7 @@ for (const [name, recs] of groups) {
     cosmetic,
     base,
     variants,
+    full,
   });
 }
 weapons.sort((a, b) => a.name.localeCompare(b.name));
@@ -208,6 +212,90 @@ await mapLimit(weapons.filter((w) => w.tree.length), 4, async (w) => {
   w.tree[2]?.sort((a, b) => w.tree[1].indexOf(parent(a)) - w.tree[1].indexOf(parent(b)));
 });
 if (noWiki.length) console.warn("No wiki tree (left/right order as in sym's data):", noWiki.join(", "));
+
+// ---------- list stats from the wiki ----------
+
+const strip = (s) => s.replace(/<br\s*\/?>/gi, " / ").replace(/<[^>]+>/g, "").replace(/\[\[(?:File|Image):[^\]]*\]\]/gi, "")
+  .replace(/\[\[[^\]|]*\|([^\]]+)\]\]/g, "$1").replace(/\[\[([^\]]+)\]\]/g, "$1").replace(/'''?/g, "").replace(/\s+/g, " ").trim();
+/** The BFV {{Infobox/weapon}} blocks on a wiki page, as { field: text }. */
+async function weaponBoxes(title) {
+  const j = await wikiGet({ action: "parse", page: title, prop: "wikitext", redirects: "1" });
+  const text = j?.parse?.wikitext?.["*"] || "";
+  const out = [];
+  for (const m of text.matchAll(/\{\{\s*Infobox\/weapon/gi)) {
+    let depth = 0, i = m.index;
+    for (; i < text.length - 1; i++) {
+      if (text.startsWith("{{", i)) { depth++; i++; } else if (text.startsWith("}}", i)) { depth--; i++; if (!depth) break; }
+    }
+    const body = text.slice(m.index, i);
+    if (!/Battlefield V\)|Battlefield V\]\]|\(Battlefield V/.test(body)) continue;
+    const f = {};
+    for (const line of body.split(/\n\s*\|/)) {
+      const eq = line.indexOf("=");
+      if (eq > 0) f[line.slice(0, eq).trim().toLowerCase()] = strip(line.slice(eq + 1));
+    }
+    out.push(f);
+  }
+  return out;
+}
+
+/**
+ * A combo's record with the wiki's figures: an upgrade's own value when a picked upgrade has one,
+ * else the wiki's base value — unless sym shows this combo changing the stat and the wiki has no
+ * value for it, in which case sym's stays.
+ */
+function applyWiki(w, stats, codes) {
+  const sym = w.full[codes.join("+")], stock = w.full[""];
+  const rec = { ...sym };
+  const labels = codes.map((c) => w.specNames[c]);
+  const choose = (alt, changed) => {
+    if (!alt) return null;
+    const spec = labels.filter((l) => alt.specs[l]).at(-1);
+    if (spec) return alt.specs[spec];
+    return changed ? null : alt.base;
+  };
+  const burst = rec.ShotsPerBurst > 1 && rec.BRoF > rec.RoF;
+  const rpm = choose(stats.rpm, burst ? sym.RPM !== stock.RPM : sym.RoF !== stock.RoF);
+  if (rpm) burst ? (rec.RPM = rpm.value) : (rec.RoF = rpm.value);
+  const mag = choose(stats.magazine, sym.MagSize !== stock.MagSize);
+  if (mag) { rec.MagSize = mag.value; rec.MagText = mag.text; }
+  const vel = choose(stats.velocity, sym.InitialSpeed !== stock.InitialSpeed);
+  if (vel) rec.InitialSpeed = vel.value;
+  const partial = choose(stats.partial, sym.ReloadLeft !== stock.ReloadLeft);
+  if (partial) rec.ReloadLeft = partial.value;
+  const empty = choose(stats.empty, sym.ReloadEmpty !== stock.ReloadEmpty);
+  if (empty) rec.ReloadEmpty = empty.value;
+  const dmg = choose(stats.damage, !same(sym.Damages, stock.Damages) || !same(sym.Dmg_distances, stock.Dmg_distances));
+  if (dmg) { rec.Damages = dmg.damages; rec.Dmg_distances = dmg.distances; rec.ShotsPerShell = dmg.pellets; }
+  return rec;
+}
+
+const fromWiki = [], changes = [];
+await mapLimit(weapons, 4, async (w) => {
+  let box = null;
+  for (const t of [w.treeSource, `${w.name}/Battlefield V`, w.name, CATALOG_NAMES[w.name]].filter(Boolean)) {
+    const boxes = await weaponBoxes(t);
+    box = boxes.find((b) => key(b.name || "") === key(w.name)) || (boxes.length === 1 ? boxes[0] : null);
+    if (box) break;
+  }
+  if (!box) return;
+  const stats = parseWeaponBox(box, Object.values(w.specNames));
+  const base = applyWiki(w, stats, []);
+  for (const k of ["RoF", "RPM", "MagSize", "InitialSpeed", "ReloadLeft"]) {
+    if (base[k] != null && base[k] !== w.base[k]) changes.push(`${w.name} ${k} ${w.base[k]}→${base[k]}`);
+  }
+  if (base.Damages[0] !== w.base.Damages[0]) changes.push(`${w.name} damage ${w.base.Damages[0]}→${base.Damages[0]}`);
+  w.base = base;
+  for (const combo of Object.keys(w.variants)) {
+    const rec = applyWiki(w, stats, combo.split("+"));
+    w.variants[combo] = Object.fromEntries(KEEP.filter((k) => !same(rec[k], base[k])).map((k) => [k, rec[k]]));
+  }
+  w.statSource = "wiki";
+  fromWiki.push(w.name);
+});
+for (const w of weapons) delete w.full;
+console.log(`List stats from the wiki for ${fromWiki.length} guns; changed from sym: ${changes.length}`);
+for (const c of changes) console.log("  " + c);
 
 
 if (unknownSpecs.size) console.warn("Specializations without a label:", [...unknownSpecs].join(", "));

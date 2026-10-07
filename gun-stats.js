@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * The Gun stats tab: every BFV gun's datamined stats (weapon-stats.js, from sym.gg), grouped like
+ * The Gun stats tab: every BFV gun's stats (weapon-stats.js: Battlefield wiki + sym.gg), grouped like
  * the in-game loadout screen (class, then weapon type), with a per-gun detail panel holding an
  * interactive damage / shots / time-to-kill chart and the specialization tree.
  *
@@ -133,7 +133,7 @@ window.GunStats = (() => {
     { key: "dmg", label: "Damage", title: "Base damage per bullet (per pellet × pellets for shotguns)", better: "high", get: (s) => shotDamage(s, 0) },
     { key: "rpm", label: "RPM", title: "Rate of fire (within a burst for burst guns)", better: "high", get: (s) => rpm(s), fmt: (v) => v },
     { key: "vel", label: "Velocity", unit: "m/s", title: "Muzzle velocity", better: "high", get: (s) => s.InitialSpeed, fmt: (v) => v },
-    { key: "mag", label: "Mag", title: "Magazine size", better: "high", get: (s) => s.MagSize, fmt: (v) => v },
+    { key: "mag", label: "Mag", title: "Magazine size (+1 = one more in the chamber)", better: "high", get: (s) => s.MagSize, fmt: (v) => v, text: (s) => s.MagText },
     { key: "reload", label: "Reload", unit: "s", title: "Reload with rounds left (stripper-clip reload for bolt-actions)", better: "low", get: (s) => reloadTime(s), fmt: (v) => v.toFixed(2) },
   ];
   const SORTS = [
@@ -172,7 +172,7 @@ window.GunStats = (() => {
     ]],
     ["Ammo and reload", [
       ["Ammo", (s) => ammoName(s.Ammo), "", null, 0, "Cartridge. Penetration, headshot, incendiary and bullet specs swap it."],
-      ["Magazine", (s) => s.MagSize, "", "high", 0, "Rounds per magazine."],
+      ["Magazine", (s) => s.MagText ?? s.MagSize, "", "high", 0, "Rounds per magazine (+1 = one more in the chamber)."],
       ["Reload, rounds left", (s) => reload(s).tactical, "s", "low", 2, "Reload with rounds still in the magazine. Includes Quick Reload's speed-up."],
       ["Reload, empty", (s) => reload(s).empty, "s", "low", 2, "Reload from empty. Includes Quick Reload's speed-up."],
       ["Stripper clip", (s) => reload(s).clip, "s", "low", 2, "Reload a full clip from empty."],
@@ -318,7 +318,7 @@ window.GunStats = (() => {
     note.innerHTML =
       "Click a gun for its damage chart, specializations and full stats; hover the chart to read any distance. " +
       "Time to kill assumes body shots from 100 health (every pellet hitting for shotguns) and leaves out bullet travel. " +
-      `Meters compare each stat with every stock gun. Stats datamined by <a href="https://sym.gg/legacy/index.html?game=bfv&page=charts" target="_blank" rel="noopener">sym.gg</a>.`;
+      `Meters compare each stat with every stock gun. Fire rate, damage, velocity, magazine and reload from the <a href="https://battlefield.fandom.com/wiki/Battlefield_V" target="_blank" rel="noopener">Battlefield wiki</a>; everything else datamined by <a href="https://sym.gg/legacy/index.html?game=bfv&page=charts" target="_blank" rel="noopener">sym.gg</a>.`;
 
     root.append(bar, table, note);
   }
@@ -439,7 +439,7 @@ window.GunStats = (() => {
         cell.append(damageCell(s));
       } else {
         const v = c.get(s);
-        const num = h("span", "gs-num", v == null ? "—" : c.fmt(v));
+        const num = h("span", "gs-num", v == null ? "—" : c.text?.(s) ?? c.fmt(v));
         if (v != null && c.unit) num.append(h("span", "gs-unit", ` ${c.unit}`));
         if (v == null) num.title = "Not in the datamine";
         if (c.key === "rpm" && burstGun(s)) num.title = `Overall rate in ${s.ShotsPerBurst}-round bursts; ${s.BRoF} rpm inside a burst`;
