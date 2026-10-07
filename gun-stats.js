@@ -66,10 +66,11 @@ window.GunStats = (() => {
   function ttk(s, d) {
     const n = btk(s, d);
     const perShot = 60000 / s.RoF;
-    // Burst guns (Breda) fire their burst at BRoF and wait RoF between bursts.
-    const burst = s.ShotsPerBurst > 1 && s.BRoF > s.RoF ? s.ShotsPerBurst : 1;
+    // Burst guns (Breda) fire each burst at BRoF; a whole burst cycle takes 60000 / RoF ms.
+    const burst = burstGun(s) ? s.ShotsPerBurst : 1;
+    const inBurst = 60000 / s.BRoF, betweenBursts = perShot - (burst - 1) * inBurst;
     let t = 0;
-    for (let i = 1; i < n; i++) t += burst > 1 && i % burst ? 60000 / s.BRoF : perShot;
+    for (let i = 1; i < n; i++) t += burst > 1 ? (i % burst ? inBurst : betweenBursts) : perShot;
     return t;
   }
   /** Bullet flight time to distance d in ms (same drag model as sym: v -= v·drag per metre). */
@@ -91,9 +92,9 @@ window.GunStats = (() => {
     return { perRound: per && per / k, clip: clip && clip / k };
   }
   const hasReload = (s) => Object.values(reload(s)).some((v) => v != null);
-  /** Burst guns (Breda) store the burst cycle in RoF and the firing rate inside a burst in BRoF; the latter is what the game shows. */
+  /** Burst guns (Breda): RoF is bursts per minute, BRoF the rate inside a burst, RPM the overall rate the game shows. */
   const burstGun = (s) => s.ShotsPerBurst > 1 && s.BRoF > s.RoF;
-  const rpm = (s) => (burstGun(s) ? s.BRoF : s.RoF);
+  const rpm = (s) => s.RPM ?? s.RoF;
   const reloadTime = (s) => { const r = reload(s); return r.tactical ?? r.clip ?? null; };
 
   // ---------- ammo names ----------
@@ -441,7 +442,7 @@ window.GunStats = (() => {
         const num = h("span", "gs-num", v == null ? "—" : c.fmt(v));
         if (v != null && c.unit) num.append(h("span", "gs-unit", ` ${c.unit}`));
         if (v == null) num.title = "Not in the datamine";
-        if (c.key === "rpm" && burstGun(s)) num.title = `${s.BRoF} rpm within ${s.ShotsPerBurst}-round bursts, up to ${s.RoF} bursts per minute`;
+        if (c.key === "rpm" && burstGun(s)) num.title = `Overall rate in ${s.ShotsPerBurst}-round bursts; ${s.BRoF} rpm inside a burst`;
         cell.append(num);
       }
       btn.append(cell);

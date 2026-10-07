@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const SOURCE = "https://sym.gg/legacy/pages/bfv/data/bfv_P.json";
 
 const KEEP = [
-  "Damages", "Dmg_distances", "ShotsPerShell", "RoF", "BRoF", "ShotsPerBurst",
+  "Damages", "Dmg_distances", "ShotsPerShell", "RoF", "BRoF", "RPM", "ShotsPerBurst",
   "InitialSpeed", "Drag", "BDrop", "MagSize", "Ammo",
   "ReloadLeft", "ReloadEmpty", "ReloadSpeed", "StripReloadTime", "SingleBulletReloadTime", "StripClipSize",
   "DeployTime", "SprintRecoverTimeMultiplier", "HorDispersion",
@@ -54,7 +54,24 @@ await import(new URL("../catalog.js", import.meta.url));
 const key = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ø/g, "o").toLowerCase().replace(/[^a-z0-9]/g, "");
 const catalog = new Map(window.CATALOG.weapons.map((w) => [key(w.name), w]));
 
-const pick = (rec) => Object.fromEntries(KEEP.map((k) => [k, rec[k] === "N/A" ? null : rec[k]]));
+/**
+ * sym truncates fire rates (449 for 450, 48 for 49). Truncated value → rounded value, from every
+ * gun whose BFV wiki infobox gives the rounded figure; each truncated value maps to one real rate.
+ */
+const RPM_FIX = { 25: 26, 48: 49, 54: 55, 71: 72, 74: 75, 83: 84, 99: 100, 119: 120, 149: 150, 179: 180, 199: 200, 299: 300, 359: 360, 449: 450, 539: 540, 599: 600 };
+/**
+ * The Breda M1935 PG fires 4-round bursts: RoF is bursts per minute, BRoF the rate inside a burst.
+ * Its overall fire rate (what the game's stats show) per bursts-per-minute value, from the wiki.
+ */
+const BREDA_TOTAL = { 105: 423, 116: 464, 133: 540 };
+
+const pick = (rec) => {
+  const out = Object.fromEntries(KEEP.map((k) => [k, rec[k] === "N/A" ? null : rec[k]]));
+  if (out.ShotsPerBurst > 1 && out.BRoF > out.RoF) out.RPM = BREDA_TOTAL[out.RoF] ?? out.RoF * out.ShotsPerBurst;
+  out.RoF = RPM_FIX[out.RoF] ?? out.RoF;
+  out.BRoF = RPM_FIX[out.BRoF] ?? out.BRoF;
+  return out;
+};
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 const groups = new Map();
