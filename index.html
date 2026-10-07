@@ -1194,6 +1194,8 @@ async function scanServers() {
 
 /** "Member" = in the platoon but missing from the roster endpoint, so its rank is unknown. */
 const ROLE_SHORT = { General: "GEN", Colonel: "COL", Private: "", Member: "" };
+/** Hover text for a roster role. "Private" is the lowest platoon rank, not a private profile. */
+const roleText = (role) => ({ Member: "Platoon member", Added: "Added by you" })[role] || (role ? `Platoon rank: ${role}` : "");
 
 function cardEl(id) {
   const p = entity(id) || { name: id };
@@ -1234,7 +1236,7 @@ function fillCard(el, p) {
   if (role) { const r = document.createElement("span"); r.className = "role"; r.textContent = role; el.append(r); }
   if (p.note) { const d = document.createElement("span"); d.className = "note-dot"; d.append(icon("pencil")); el.append(d); }
   const n = document.createElement("div"); n.className = "name"; n.textContent = p.name; el.append(n);
-  const sub = state.tab === "players" ? rosterOf(id).role : p.type;
+  const sub = state.tab === "players" ? roleText(rosterOf(id).role) : p.type;
   el.title = `${p.name}${sub ? " · " + sub : ""}${p.note ? "\n\n" + p.note : ""}`;
 }
 
@@ -1588,6 +1590,7 @@ function openCtx(card, x, y) {
   if (state.tab === "players") {
     sep();
     item(icon("external"), "Stats on gametools", () => window.open(`https://gametools.network/stats/pc/playerid/${id}?game=bfv`, "_blank", "noopener"));
+    item(icon("external"), "Profile on Battlefield Tracker", () => window.open(`https://battlefieldtracker.com/bfv/profile/origin/${encodeURIComponent(p.name)}/overview`, "_blank", "noopener"));
     if (rosterOf(id).manual) item(icon("trash"), "Remove player", () => {
       for (const t of board().tiers) t.items = t.items.filter((x) => x !== id);
       board().pool = board().pool.filter((x) => x !== id);
