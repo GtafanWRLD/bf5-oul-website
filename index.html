@@ -309,8 +309,10 @@
   /* Gun stats */
   body:not([data-tab="stats"]) .stats-only { display: none !important; }
   body:not([data-tab="veh"]) .veh-only { display: none !important; }
+  body:not([data-tab="sens"]) .sens-only { display: none !important; }
   body[data-tab="stats"] .board-area, body[data-tab="stats"] .tiers-only,
-  body[data-tab="veh"] .board-area, body[data-tab="veh"] .tiers-only { display: none !important; }
+  body[data-tab="veh"] .board-area, body[data-tab="veh"] .tiers-only,
+  body[data-tab="sens"] .board-area, body[data-tab="sens"] .tiers-only { display: none !important; }
 
   /* Players / Weapons / Vehicles / Maps under the Tier lists tab. */
   .subtabs {
@@ -528,6 +530,27 @@
   .vu-build dl { grid-template-columns: auto 1fr; align-items: start; }
   .vu-none { color: var(--muted); font-weight: 500; }
 
+  /* Sensitivity calculator */
+  .sens-layout { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 16px; align-items: start; }
+  .sens-calc, .sens-explain { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .sens-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .sens-fields label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 13px; }
+  .sens-fields .field { width: 100%; font-variant-numeric: tabular-nums; }
+  .sens-note { margin: 10px 0 0; color: var(--muted); font-size: 13px; text-wrap: pretty; }
+  .sens-note b { color: var(--text); font-weight: 600; }
+  .sens-table { margin-top: 10px; }
+  .sens-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 0 0 6px; }
+  .sens-table td { padding: 6px 0; }
+  .sens-val { font-weight: 600; color: var(--accent); font-size: 15px; }
+  .sens-flag { color: var(--danger); font-size: 12.5px; text-align: right; }
+  .sens-explain p, .sens-explain li { max-width: 72ch; text-wrap: pretty; }
+  .sens-explain p { margin: 0 0 10px; }
+  .sens-explain ul, .sens-explain ol { margin: 0 0 10px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .sens-explain code { padding: 1px 5px; border-radius: 4px; background: var(--surface-2); font-size: 13px; }
+  .sens-math summary { cursor: pointer; font: 700 16px var(--font-display); letter-spacing: .02em; }
+  .sens-math[open] summary { margin-bottom: 10px; }
+  @media (max-width: 800px) { .sens-layout { grid-template-columns: 1fr; } }
+
   @media (max-width: 900px) {
     .vu-detail-top { grid-template-columns: 1fr; }
     .gs-head, .gs-row { grid-template-columns: minmax(150px, 1fr) repeat(3, 64px); gap: 10px; }
@@ -627,6 +650,7 @@
       <button data-top="tiers">Tier lists</button>
       <button data-top="stats">Gun stats</button>
       <button data-top="veh">Vehicle upgrades</button>
+      <button data-top="sens">Sensitivity</button>
       <span class="tab-indicator" aria-hidden="true"></span>
     </nav>
   </div>
@@ -685,6 +709,7 @@
 
   <section id="gunStats" class="stats-only" aria-label="Gun stats"></section>
   <section id="vehUpgrades" class="veh-only" aria-label="Vehicle upgrades"></section>
+  <section id="sensCalc" class="sens-only" aria-label="Sensitivity calculator"></section>
 
   <footer><p>Player, platoon and server data from <a href="https://gametools.network" target="_blank" rel="noopener">gametools.network</a>. Its roster endpoint often lists only part of a platoon, so members it leaves out are found by scanning live servers for the platoon's tag while the page is open (each find is checked against the player's profile, since tags aren't unique). Anyone still missing can be added by name. Your tier lists are stored only in this browser. Not affiliated with EA or DICE.</p></footer>
 </main>
@@ -706,11 +731,12 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="catalog.js?v=202610070306"></script>
-<script src="weapon-stats.js?v=202610070306"></script>
-<script src="gun-stats.js?v=202610070306"></script>
-<script src="vehicle-specs.js?v=202610070306"></script>
-<script src="vehicle-upgrades.js?v=202610070306"></script>
+<script src="catalog.js?v=202610070400"></script>
+<script src="weapon-stats.js?v=202610070400"></script>
+<script src="gun-stats.js?v=202610070400"></script>
+<script src="vehicle-specs.js?v=202610070400"></script>
+<script src="vehicle-upgrades.js?v=202610070400"></script>
+<script src="sensitivity.js?v=202610070400"></script>
 <script>
 "use strict";
 
@@ -822,6 +848,8 @@ const freshState = () => ({
   stats: {},
   /** Vehicle upgrades tab: type filter, open vehicle and planned picks per vehicle. */
   vehicleUpgrades: {},
+  /** Sensitivity tab: resolution, FOV and coefficient typed into the calculator. */
+  sensitivity: {},
 });
 
 /** Fills in anything a saved state is missing (e.g. a tab added after it was saved). */
@@ -833,6 +861,7 @@ function normalize(s) {
   s.typeFilter = { ...fresh.typeFilter, ...(s.typeFilter || {}) };
   s.stats ||= {};
   s.vehicleUpgrades ||= {};
+  s.sensitivity ||= {};
   s.platoons ||= {};
   s.playerBoards ||= {};
   // The Unknown tier is gone: anyone left in it goes back to the top of Unranked.
@@ -910,7 +939,7 @@ function switchTab(tab) {
 }
 
 /** Top-level tabs that aren't tier lists. */
-const TOOL_TABS = ["stats", "veh"];
+const TOOL_TABS = ["stats", "veh", "sens"];
 /** Which top tab a tab belongs to (every tier list sits under "tiers"). */
 const topTab = (tab = state.tab) => (TOOL_TABS.includes(tab) ? tab : "tiers");
 
@@ -927,6 +956,7 @@ $("#subtabs").addEventListener("click", (e) => {
 function showTabStatus() {
   if (state.tab === "players") return showCount();
   if (state.tab === "stats") return setStatus(window.GunStats ? GunStats.status() : "Couldn't load the gun stats (gun-stats.js is missing next to index.html).");
+  if (state.tab === "sens") return setStatus(window.Sensitivity ? "" : "Couldn't load the calculator (sensitivity.js is missing next to index.html).");
   if (state.tab === "veh") return setStatus(window.VehicleUpgrades ? VehicleUpgrades.status() : "Couldn't load the vehicle upgrades (vehicle-upgrades.js is missing next to index.html).");
   const all = Object.keys(state.items[state.tab]).length;
   const ranked = board().tiers.reduce((n, t) => n + t.items.length, 0);
@@ -1284,6 +1314,10 @@ function render() {
   }
   if (state.tab === "veh") {
     window.VehicleUpgrades?.render($("#vehUpgrades"), state.vehicleUpgrades, save);
+    return;
+  }
+  if (state.tab === "sens") {
+    window.Sensitivity?.render($("#sensCalc"), state.sensitivity, save);
     return;
   }
   $("#filter").placeholder = TABS[state.tab].filter;
