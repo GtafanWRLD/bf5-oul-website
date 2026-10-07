@@ -362,7 +362,6 @@
   }
   .gs-group-cls { color: var(--accent); }
   .gs-group-n { color: var(--muted); font: 500 13px var(--font); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
-  .gs-dmg { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .gs-head { position: sticky; top: var(--header-h, 0px); z-index: 2; min-height: 38px; background: var(--bg); box-shadow: 0 1px 0 var(--line); }
   .gs-sort {
     display: inline-flex; align-items: center; gap: 4px; justify-self: start; padding: 6px 0; border: 0; background: none;
@@ -391,9 +390,6 @@
   .gs-names { display: flex; flex-direction: column; min-width: 0; }
   .gs-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gs-sub { color: var(--accent); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .gs-spark { display: block; width: 96px; height: 18px; overflow: visible; }
-  .gs-spark .line { fill: none; stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
-  .gs-spark .area { fill: rgb(240 167 58 / .1); }
   .gs-cell { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
   .gs-num { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .gs-unit { color: var(--muted); font-size: 12px; font-weight: 500; }
@@ -535,7 +531,7 @@
   @media (max-width: 900px) {
     .vu-detail-top { grid-template-columns: 1fr; }
     .gs-head, .gs-row { grid-template-columns: minmax(150px, 1fr) repeat(3, 64px); gap: 10px; }
-    [data-col="vel"], [data-col="reload"], .gs-row .gs-spark { display: none; }
+    [data-col="vel"], [data-col="reload"] { display: none; }
     .gs-detail-top { grid-template-columns: 1fr; }
   }
   @media (max-width: 640px) {

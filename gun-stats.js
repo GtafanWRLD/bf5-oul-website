@@ -91,6 +91,9 @@ window.GunStats = (() => {
     return { perRound: per && per / k, clip: clip && clip / k };
   }
   const hasReload = (s) => Object.values(reload(s)).some((v) => v != null);
+  /** Burst guns (Breda) store the burst cycle in RoF and the firing rate inside a burst in BRoF; the latter is what the game shows. */
+  const burstGun = (s) => s.ShotsPerBurst > 1 && s.BRoF > s.RoF;
+  const rpm = (s) => (burstGun(s) ? s.BRoF : s.RoF);
   const reloadTime = (s) => { const r = reload(s); return r.tactical ?? r.clip ?? null; };
 
   // ---------- ammo names ----------
@@ -126,8 +129,8 @@ window.GunStats = (() => {
 
   /** Table columns. `better` says which end of the range fills the meter and sorts first. */
   const COLUMNS = [
-    { key: "dmg", label: "Damage", title: "Damage per shot, close range → long range", better: "high", get: (s) => shotDamage(s, 0) },
-    { key: "rpm", label: "RPM", title: "Rate of fire", better: "high", get: (s) => s.RoF, fmt: (v) => v },
+    { key: "dmg", label: "Damage", title: "Base damage per bullet (per pellet × pellets for shotguns)", better: "high", get: (s) => shotDamage(s, 0) },
+    { key: "rpm", label: "RPM", title: "Rate of fire (within a burst for burst guns)", better: "high", get: (s) => rpm(s), fmt: (v) => v },
     { key: "vel", label: "Velocity", unit: "m/s", title: "Muzzle velocity", better: "high", get: (s) => s.InitialSpeed, fmt: (v) => v },
     { key: "mag", label: "Mag", title: "Magazine size", better: "high", get: (s) => s.MagSize, fmt: (v) => v },
     { key: "reload", label: "Reload", unit: "s", title: "Reload with rounds left (stripper-clip reload for bolt-actions)", better: "low", get: (s) => reloadTime(s), fmt: (v) => v.toFixed(2) },
@@ -372,11 +375,6 @@ window.GunStats = (() => {
     for (const c of COLUMNS) head.append(headCell(c.key, c.label, c.title));
     table.append(head);
 
-    const domains = Object.fromEntries(COLUMNS.map((c) => {
-      const vals = DATA.weapons.map((w) => c.get(w.base)).filter((v) => typeof v === "number");
-      return [c.key, [Math.min(...vals), Math.max(...vals)]];
-    }));
-
     const list = visible();
     if (!list.length) {
       table.append(h("p", "gs-empty", "No gun matches that."));
@@ -398,7 +396,7 @@ window.GunStats = (() => {
       if (prefs.cls === "all" && g.cls !== "Sidearm") gh.append(h("span", "gs-group-cls", g.cls));
       gh.append(h("span", "gs-group-type", TYPE_PLURAL[g.type] || g.type), h("span", "gs-group-n", String(g.guns.length)));
       table.append(gh);
-      for (const w of g.guns.sort(compare)) table.append(row(w, domains));
+      for (const w of g.guns.sort(compare)) table.append(row(w));
     }
 
     justOpened = null;
@@ -406,7 +404,7 @@ window.GunStats = (() => {
     window.scrollTo(0, scrollY);
   }
 
-  function row(w, domains) {
+  function row(w) {
     const s = current(w);
     const item = h("div", "gs-item");
     const btn = h("button", "gs-row");
@@ -443,7 +441,8 @@ window.GunStats = (() => {
         const num = h("span", "gs-num", v == null ? "—" : c.fmt(v));
         if (v != null && c.unit) num.append(h("span", "gs-unit", ` ${c.unit}`));
         if (v == null) num.title = "Not in the datamine";
-        cell.append(num, meter(meterFill(v, domains[c.key], c.better)));
+        if (c.key === "rpm" && burstGun(s)) num.title = `${s.BRoF} rpm within ${s.ShotsPerBurst}-round bursts, up to ${s.RoF} bursts per minute`;
+        cell.append(num);
       }
       btn.append(cell);
     }
@@ -465,23 +464,11 @@ window.GunStats = (() => {
     return item;
   }
 
-  /** Close → far damage, with a tiny damage-over-range curve. */
+  /** Base damage per bullet, or per pellet × pellet count for shotguns. */
   function damageCell(s) {
-    const near = shotDamage(s, 0), far = shotDamage(s, MAX_RANGE);
-    const wrap = h("span", "gs-dmg");
-    const num = h("span", "gs-num", round1(near));
-    if (Math.abs(far - near) > .05) num.append(h("span", "gs-unit", ` → ${round1(far)}`));
-    wrap.append(num);
-
-    const W = 96, H = 18, max = Math.max(100, near);
-    const x = (d) => (d / MAX_RANGE) * W;
-    const y = (v) => H - 1 - (Math.min(v, max) / max) * (H - 2);
-    let path = "";
-    for (let d = 0; d <= MAX_RANGE; d += 3) path += `${d ? "L" : "M"}${x(d).toFixed(1)},${y(shotDamage(s, d)).toFixed(1)}`;
-    const svg = s$("svg", { viewBox: `0 0 ${W} ${H}`, class: "gs-spark", "aria-hidden": "true" });
-    svg.append(s$("path", { d: `${path}L${W},${H}L0,${H}Z`, class: "area" }), s$("path", { d: path, class: "line" }));
-    wrap.append(svg);
-    wrap.title = `${fmtDmg(s, 0)} up close, ${fmtDmg(s, MAX_RANGE)} at ${MAX_RANGE} m`;
+    const one = damageAt(s, 0);
+    const wrap = h("span", "gs-num", round1(one));
+    if (s.ShotsPerShell > 1) wrap.append(h("span", "gs-unit", ` × ${s.ShotsPerShell}`));
     return wrap;
   }
 
