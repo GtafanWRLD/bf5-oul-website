@@ -216,7 +216,8 @@ window.GunStats = (() => {
     else m.style.setProperty("--fill", `${Math.max(.04, fill) * 100}%`);
     return m;
   }
-  const round1 = (v) => (Math.round(v * 10) / 10).toString();
+  /** Damage as a whole number, as the game shows it. */
+  const dmgText = (v) => String(Math.round(v));
   const fmtNum = (v, dec) => {
     const r = v.toFixed(dec);
     // Trim trailing zeros on the finer stats (0.150 → 0.15) but keep integers as they are.
@@ -224,7 +225,7 @@ window.GunStats = (() => {
   };
   const fmtDmg = (s, d) => {
     const one = damageAt(s, d);
-    return s.ShotsPerShell > 1 ? `${round1(one * s.ShotsPerShell)} dmg (${s.ShotsPerShell} × ${round1(one)})` : `${round1(one)} dmg`;
+    return s.ShotsPerShell > 1 ? `${dmgText(one * s.ShotsPerShell)} dmg (${s.ShotsPerShell} × ${dmgText(one)})` : `${dmgText(one)} dmg`;
   };
 
   // ---------- state ----------
@@ -468,7 +469,7 @@ window.GunStats = (() => {
   /** Base damage per bullet, or per pellet × pellet count for shotguns. */
   function damageCell(s) {
     const one = damageAt(s, 0);
-    const wrap = h("span", "gs-num", round1(one));
+    const wrap = h("span", "gs-num", dmgText(one));
     if (s.ShotsPerShell > 1) wrap.append(h("span", "gs-unit", ` × ${s.ShotsPerShell}`));
     return wrap;
   }
@@ -777,7 +778,7 @@ window.GunStats = (() => {
   // ---------- chart ----------
 
   const MODES = {
-    damage: { label: "Damage", value: (s, d) => shotDamage(s, d), fmt: (v) => round1(v), step: false },
+    damage: { label: "Damage", value: (s, d) => shotDamage(s, d), fmt: (v) => dmgText(v), step: false },
     btk: { label: "Shots to kill", value: (s, d) => btk(s, d), fmt: (v) => v, step: true },
     ttk: { label: "Time to kill", value: (s, d) => ttk(s, d), fmt: (v) => `${Math.round(v)} ms`, step: true },
   };
