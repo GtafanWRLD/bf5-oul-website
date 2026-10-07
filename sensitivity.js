@@ -50,8 +50,8 @@ window.Sensitivity = (() => {
               <label>Coefficient %<input class="field" data-k="coef" type="number" inputmode="decimal" min="0" step="1"></label>
             </div>
             <p class="sens-note" data-out="ratio"></p>
-            <p class="sens-note">Use the resolution the game <b>renders</b> at, not your monitor's. Playing 1920×1440 stretched on a 1080p screen? Type 1920 and 1440.
-              The FOV is the number on the left of BFV's FOV slider, not the one in brackets.</p>
+            <p class="sens-note">Use the resolution the game <b>renders</b> at. If you play 1920×1440 stretched on a 1080p monitor, put 1920 and 1440.
+              FOV is the number on the left of the slider, not the one in brackets.</p>
           </div>
           <div class="gs-group">
             <h3>Type these into the game</h3>
@@ -64,40 +64,40 @@ window.Sensitivity = (() => {
         </div>
         <div class="sens-explain">
           <div class="gs-group">
-            <h3>What is this for?</h3>
-            <p>When you aim down a scope the game zooms in. If your mouse stayed just as fast, a tiny nudge would throw your aim across the whole zoomed picture. So BFV slows your mouse down when you zoom in. The question is <b>how much</b>.</p>
-            <p>BFV's answer is <b>Uniform Soldier Aiming (USA)</b>. Imagine a ring drawn around your crosshair. USA makes sure that moving your aim onto that ring takes the same mouse movement on every scope. The <b>coefficient</b> setting decides how big the ring is.</p>
+            <h3>Why use this</h3>
+            <p>Scopes zoom in, so the game turns your mouse speed down while you're scoped. Otherwise a small mouse movement would swing you way off target.</p>
+            <p><b>Uniform Soldier Aiming (USA)</b> decides how much it turns it down. The <b>coefficient</b> picks which distance from your crosshair feels the same on every scope:</p>
             <ul>
-              <li><b>Coefficient 0:</b> the ring is a tiny dot on your crosshair. Small tracking movements feel the same on every scope, but quick flicks on big scopes feel slow.</li>
-              <li><b>Coefficient = your screen shape</b> (178 on 16:9, 133 on 4:3, 160 on 16:10): the ring touches the edge of your screen, so flicking to something at the edge feels the same on every scope.</li>
+              <li><b>0:</b> right on your crosshair. Tracking feels the same on every scope, but flicks on 6× and up feel slow.</li>
+              <li><b>178</b> (16:9), <b>160</b> (16:10), <b>133</b> (4:3): the edge of your screen. Flicks feel the same on every scope.</li>
             </ul>
-            <p>This calculator gives you both. Set the coefficient to 0 in the game for smooth tracking, then type in the per-scope values above. They speed each scope back up so flicks feel like the bigger coefficient. Coefficient 0 also works on every copy of BFV, even if your slider can't go up to 178.</p>
+            <p>These values get you both. Put the coefficient on 0 for tracking, then set each scope's zoom sensitivity from the table. Flicks then feel like they would at 178 (or 160 / 133, depending on your screen).</p>
           </div>
           <div class="gs-group">
             <h3>How to set it up</h3>
             <ol>
               <li>In BFV go to Options › Controls › Advanced.</li>
               <li>Turn <b>Uniform Soldier Aiming</b> on.</li>
-              <li>Set the <b>USA coefficient to 0</b>. The values here are wrong for anything else.</li>
+              <li>Set the <b>USA coefficient to 0</b> (the values only work at 0).</li>
               <li>Turn <b>ADS field of view</b> (FOV scaling when aiming) on.</li>
-              <li>Fill in your resolution and FOV here, then copy each value into that scope's zoom sensitivity.</li>
+              <li>Enter your resolution and FOV above, then put each value into the matching scope's zoom sensitivity.</li>
               <li>Leave Soldier Zoom Sensitivity at 100%.</li>
             </ol>
-            <p class="sens-note">Don't copy a friend's FOV number if their screen shape is different. FOV 105 on 4:3 stretched is a much narrower view than FOV 105 on 16:9, so the values come out different too.</p>
+            <p class="sens-note">FOV numbers depend on aspect ratio. 105 on 4:3 stretched is a lot narrower than 105 on 16:9, so don't just copy someone else's.</p>
           </div>
           <details class="gs-group sens-math">
-            <summary>The maths, if you want to check it</summary>
-            <p>The FOV slider is your <b>vertical</b> view angle. Half your screen's height in the 3D world is tan(FOV ÷ 2), so the ring sits at:</p>
+            <summary>How it's calculated</summary>
+            <p>BFV's FOV slider is vertical FOV. The ring distance is:</p>
             <math display="block"><mi>k</mi><mo>=</mo><mi>c</mi><mo>·</mo><mi>tan</mi><mo>(</mo><mfrac><mtext>FOV</mtext><mn>2</mn></mfrac><mo>)</mo></math>
-            <p>where <i>c</i> is the coefficient (178% = 1.78). At zoom <i>z</i>, USA scales your speed by:</p>
+            <p><i>c</i> is the coefficient as a decimal (178 → 1.78). At zoom <i>z</i>, USA scales your sensitivity by:</p>
             <math display="block"><mfrac><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mfrac><mi>k</mi><mi>z</mi></mfrac><mo>)</mo></mrow><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mi>k</mi><mo>)</mo></mrow></mfrac></math>
-            <p>(tan<sup>−1</sup> is the inverse tan button on a calculator, in radians.) At coefficient 0 that becomes just 1 ÷ <i>z</i>, so the slider value is what you want divided by what you have:</p>
+            <p>tan<sup>−1</sup> is inverse tan, in radians. With coefficient 0 that's just 1/<i>z</i>, so the value you need is:</p>
             <math display="block"><mtext>value</mtext><mo>=</mo><mi>z</mi><mo>·</mo><mfrac><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mfrac><mi>k</mi><mi>z</mi></mfrac><mo>)</mo></mrow><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mi>k</mi><mo>)</mo></mrow></mfrac></math>
-            <p>Example: 1920×1080 at FOV 105 on a 6× scope:</p>
+            <p>Example, 1920×1080 at FOV 105 on a 6× scope:</p>
             <math display="block"><mi>k</mi><mo>=</mo><mn>1.778</mn><mo>·</mo><mi>tan</mi><mo>(</mo><mn>52.5</mn><mo>°</mo><mo>)</mo><mo>=</mo><mn>2.317</mn></math>
             <math display="block"><mtext>value</mtext><mo>=</mo><mn>6</mn><mo>·</mo><mfrac><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mn>0.386</mn><mo>)</mo></mrow><mrow><msup><mi>tan</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo>(</mo><mn>2.317</mn><mo>)</mo></mrow></mfrac><mo>=</mo><mn>1.90</mn></math>
-            <p>so you'd type <b>190%</b>.</p>
-            <p>1× is always 100% because nothing is zoomed. Big scopes level off near a ceiling (about 199% at 16:9, FOV 105), which is why 8× and 10× come out almost the same.</p>
+            <p>So you'd put <b>190%</b>.</p>
+            <p>1× is always 100%. Values flatten out at high zoom (around 199% for 16:9 at FOV 105), so 8× and 10× end up nearly the same.</p>
             <p class="sens-note">Source: DICE's design write-up "Consistent 360 degree distance aim".</p>
           </details>
         </div>
@@ -123,7 +123,7 @@ window.Sensitivity = (() => {
     els.coef.placeholder = Number.isFinite(ratio) ? String(auto) : "";
     const coef = prefs.coef ?? ratio * 100;
     els.ratio.textContent = Number.isFinite(ratio)
-      ? `Your screen is ${ratioName(ratio)} (${ratio.toFixed(3)}), so the coefficient to copy is ${auto}%. Leave that box empty to use it. Lower makes big scopes slower, which some snipers like.`
+      ? `${ratioName(ratio)} (${ratio.toFixed(3)}), so the default coefficient is ${auto}. Leave the box empty to use it, or go lower if you want big scopes slower.`
       : "Type your resolution to see your screen shape.";
     els.rows.innerHTML = "";
     const ok = Number.isFinite(ratio) && fov > 0 && fov < 180 && coef >= 0;
