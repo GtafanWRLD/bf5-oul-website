@@ -826,7 +826,8 @@ window.GunStats = (() => {
       if (showStock) legend.append(h("span", "key now", "With specs"), h("span", "key stock", "Stock"));
       let ymax = 0;
       for (let d = 0; d <= MAX_RANGE; d++) ymax = Math.max(ymax, mode.value(s, d), showStock ? mode.value(stock, d) : 0);
-      ymax = niceMax(ymax * 1.08);
+      const axis = niceAxis(ymax, chartMode === "btk");
+      ymax = axis.max;
       const x = (d) => P.l + (d / MAX_RANGE) * (width - P.l - P.r);
       const y = (v) => P.t + (1 - v / ymax) * (H - P.t - P.b);
 
@@ -844,7 +845,7 @@ window.GunStats = (() => {
 
       svg?.remove();
       svg = s$("svg", { width, height: H, class: "gs-svg", role: "img", "aria-label": `${mode.label} over range for ${w.name}` });
-      for (const t of ticks(ymax, chartMode === "btk")) {
+      for (const t of axis.ticks) {
         svg.append(s$("line", { x1: P.l, x2: width - P.r, y1: y(t), y2: y(t), class: "grid" }));
         const lab = s$("text", { x: P.l - 8, y: y(t) + 4, class: "axis", "text-anchor": "end" });
         lab.textContent = chartMode === "ttk" ? Math.round(t) : t;
@@ -897,18 +898,16 @@ window.GunStats = (() => {
     return box;
   }
 
-  function niceMax(v) {
-    if (v <= 0) return 1;
-    const p = 10 ** Math.floor(Math.log10(v));
-    for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
-    return 10 * p;
-  }
-  function ticks(max, whole) {
-    let step = niceMax(max / 4.5);
-    if (whole) step = Math.max(1, Math.ceil(step));
-    const out = [];
-    for (let t = 0; t <= max + 1e-9; t += step) out.push(Math.round(t * 100) / 100);
-    return out;
+  /** A y axis with round ticks: steps of 1, 2 or 5 × 10ⁿ (0/10/20/30, not 0/8/16/24), about 5 of them. */
+  function niceAxis(top, whole) {
+    const rough = Math.max(top, 1) / 5;
+    const p = 10 ** Math.floor(Math.log10(rough));
+    let step = [1, 2, 5, 10].map((m) => m * p).find((s) => s >= rough);
+    if (whole) step = Math.max(1, Math.round(step));
+    const max = Math.ceil((top * 1.04) / step) * step || step;
+    const ticks = [];
+    for (let t = 0; t <= max + 1e-9; t += step) ticks.push(Math.round(t * 1000) / 1000);
+    return { max, ticks };
   }
 
   return { render, status };
