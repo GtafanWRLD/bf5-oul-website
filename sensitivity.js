@@ -84,7 +84,7 @@ window.Sensitivity = (() => {
               <li><b>0:</b> right on your crosshair. Tracking feels the same on every scope, but flicks on 6× and up feel slow.</li>
               <li><b>178</b> (16:9), <b>160</b> (16:10), <b>133</b> (4:3): the edge of your screen. Flicks feel the same on every scope.</li>
             </ul>
-            <p>These values get you both. Put the coefficient on 0 for tracking, then set each scope's zoom sensitivity from the table. Flicks then feel like they would at 178 (or 160 / 133, depending on your screen).</p>
+            <p>These values get you both. Put the coefficient on 0 for tracking, then set each scope's zoom sensitivity from the table. Flicks then feel like they would at 178 (or 160 / 133, depending on your aspect ratio).</p>
           </div>
           <div class="gs-group">
             <h3>How to set it up</h3>
@@ -116,14 +116,14 @@ window.Sensitivity = (() => {
         </div>
         <div class="gs-group fov-conv">
           <h3>FOV converter</h3>
-          <p class="sens-note">Switching screen shape? This finds the FOV that keeps the same view.</p>
+          <p class="sens-note">Changing your in-game aspect ratio? This finds the FOV that keeps the same view.</p>
           <div class="fov-rows">
-            <span class="fov-label">I play on</span>
-            <div class="gs-seg small" role="group" aria-label="Current screen shape" data-side="from">${SHAPES.map((x) => `<button type="button" data-shape="${x}">${x}</button>`).join("")}</div>
-            <label class="fov-label" for="fovNow">with FOV</label>
+            <span class="fov-label">Current aspect ratio</span>
+            <div class="gs-seg small" role="group" aria-label="Current aspect ratio" data-side="from">${SHAPES.map((x) => `<button type="button" data-shape="${x}">${x}</button>`).join("")}</div>
+            <label class="fov-label" for="fovNow">Current FOV</label>
             <div class="fov-range"><input id="fovNow" data-k="cfov" type="range" min="${FOV_MIN}" max="${FOV_MAX}" step="1"><output data-out="cfovText"></output></div>
-            <span class="fov-label">switching to</span>
-            <div class="gs-seg small" role="group" aria-label="New screen shape" data-side="to">${SHAPES.map((x) => `<button type="button" data-shape="${x}">${x}</button>`).join("")}</div>
+            <span class="fov-label">New aspect ratio</span>
+            <div class="gs-seg small" role="group" aria-label="New aspect ratio" data-side="to">${SHAPES.map((x) => `<button type="button" data-shape="${x}">${x}</button>`).join("")}</div>
           </div>
           <div class="fov-result" data-out="fovResult"></div>
         </div>
@@ -160,7 +160,7 @@ window.Sensitivity = (() => {
     const coef = prefs.coef ?? ratio * 100;
     els.ratio.textContent = Number.isFinite(ratio)
       ? `${ratioName(ratio)} (${ratio.toFixed(3)}), so the default coefficient is ${auto}. Leave the box empty to use it, or go lower if you want big scopes slower.`
-      : "Type your resolution to see your screen shape.";
+      : "Type your resolution to see your aspect ratio.";
     els.rows.innerHTML = "";
     const ok = Number.isFinite(ratio) && fov > 0 && fov < 180 && coef >= 0;
     for (const z of ZOOMS) {
@@ -178,11 +178,10 @@ window.Sensitivity = (() => {
     const now = num(prefs.cfov);
     els.cfovText.textContent = now;
     const exact = convertFov(now, aspect(prefs.from), aspect(prefs.to));
-    const value = Math.min(FOV_MAX, Math.max(FOV_MIN, Math.round(exact)));
-    const note = value === Math.round(exact) ? "You'll see just as much to the sides as now."
-      : value === FOV_MAX ? `That's the max. You'll see a bit less to the sides than now (a perfect match would need ${Math.round(exact)}).`
-      : `That's the min. You'll see a bit more to the sides than now (a perfect match would need ${Math.round(exact)}).`;
-    els.fovResult.innerHTML = `<span>Set FOV to</span><span class="fov-big">${value}</span><span>in game</span><p class="sens-note">${note}</p>`;
+    const value = Math.round(exact);
+    els.fovResult.innerHTML = value >= FOV_MIN && value <= FOV_MAX
+      ? `<span>Set FOV to</span><span class="fov-big">${value}</span><span>in game</span><p class="sens-note">You'll see just as much to the sides as now.</p>`
+      : `<p class="fov-warn">Can't be set in game. You'd need FOV ${value}, but the slider only goes from ${FOV_MIN} to ${FOV_MAX}.</p>`;
   }
 
   // The sheet's worked example: 1920×1080, FOV 105, 6× → 190%.

@@ -10,7 +10,7 @@ Drag-and-drop tier lists and gun stats for Battlefield V:
 - **Vehicle upgrades**: every tank and plane's specialization tree and what each upgrade does, to
   plan a build. Upgrade lists from the [Battlefield wiki](https://battlefield.fandom.com/wiki/Specializations_(Battlefield_V)/Vehicles).
 - **Sensitivity & FOV**: per-scope zoom sensitivity values for Uniform Soldier Aiming at coefficient 0,
-  and an FOV converter that tells you what FOV to set when you switch screen shape.
+  and an FOV converter that tells you what FOV to set when you change your in-game aspect ratio.
 
 Add notes to any card (double-click), rename / recolor / reorder tiers, and save a tier list as a PNG.
 Everything is saved in your browser's local storage: nothing is uploaded anywhere.
