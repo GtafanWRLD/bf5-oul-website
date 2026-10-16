@@ -65,7 +65,7 @@ window.Sensitivity = (() => {
               <label>Coefficient %<input class="field" data-k="coef" type="number" inputmode="decimal" min="0" step="1"></label>
             </div>
             <label class="sens-check"><input type="checkbox" data-out="coefOn"> Change the coefficient</label>
-            <p class="sens-warn" data-out="coefWarn">Only change this if you know what you're doing. The coefficient that matches your aspect ratio is right for most people. Lower makes big scopes slower, which some snipers like.</p>
+            <p class="sens-warn" data-out="coefWarn">Only change this if you know what you're doing. The coefficient that matches your aspect ratio is right for most people. Lower makes big scopes slower.</p>
             <p class="sens-note" data-out="ratio"></p>
             <p class="sens-note">Use the resolution the game <b>renders</b> at. If you play 1920×1440 stretched on a 1080p monitor, put 1920 and 1440.
               FOV is the number on the left of the slider, not the one in brackets.</p>
@@ -85,7 +85,7 @@ window.Sensitivity = (() => {
             <p>Scopes zoom in, so the game turns your mouse speed down while you're scoped. Otherwise a small mouse movement would swing you way off target.</p>
             <p><b>Uniform Soldier Aiming (USA)</b> decides how much it turns it down. The <b>coefficient</b> picks which distance from your crosshair feels the same on every scope:</p>
             <ul>
-              <li><b>0:</b> right on your crosshair. Tracking feels the same on every scope, but flicks on 6× and up feel slow.</li>
+              <li><b>0:</b> right on your crosshair. Tracking feels the same on every scope, but on bigger magnifications flicks might feel too slow.</li>
               <li><b>178</b> (16:9), <b>160</b> (16:10), <b>133</b> (4:3): the edge of your screen. Flicks feel the same on every scope.</li>
             </ul>
             <p>These values get you both. Put the coefficient on 0 for tracking, then set each scope's zoom sensitivity from the table. Flicks then feel like they would at 178 (or 160 / 133, depending on your aspect ratio).</p>
