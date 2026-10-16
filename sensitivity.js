@@ -11,12 +11,6 @@
  *
  * Below that, an FOV converter: the slider value on another aspect ratio that keeps the same
  * horizontal view. hfov = 2 × atan(tan(vfov / 2) × aspect).
- *
- * Last, "How it looks": two setups drawn on a 16:9 monitor with a soldier at a chosen distance, the
- * picked gun's first-shot kick, and a sprint across the screen. Something at distance d, offset
- * y metres up and x across, lands at (y / d) / tan(vfov / 2) of half the screen height and
- * (x / d) / (tan(vfov / 2) × aspect) of half the screen width; stretching a render ratio onto a
- * 16:9 monitor is what makes things wider.
  */
 window.Sensitivity = (() => {
   const ZOOMS = [1, 1.25, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10];
@@ -49,7 +43,6 @@ window.Sensitivity = (() => {
     prefs.from ??= "4:3";
     prefs.to ??= "16:9";
     prefs.cfov ??= 90;
-    prefs.vis ??= { a: { shape: "16:9", fov: 55 }, b: { shape: "16:9", fov: 105 }, dist: 20, gun: "MP40", close: true };
     if (!container.dataset.built) build(container);
     for (const k of ["w", "h", "fov", "cfov"]) els[k].value = prefs[k];
     prefs.coefOn ??= prefs.coef != null;
@@ -194,8 +187,6 @@ window.Sensitivity = (() => {
       els.rows.append(tr);
     }
     updateFov();
-    if (!vis) buildVis(document.querySelector("#sensCalc"));
-    drawVis();
   }
 
   function updateFov() {
@@ -213,142 +204,6 @@ window.Sensitivity = (() => {
   console.assert(slider(6, 177.78, 105) === 190 && slider(1, 178, 105) === 100, "sensitivity math");
   // FOV converter: 4:3 at 105 → 16:9 is 88.69 (slider 89), → 16:10 is 94.72.
   console.assert(convertFov(105, 4 / 3, 16 / 9).toFixed(2) === "88.69" && convertFov(105, 4 / 3, 1.6).toFixed(2) === "94.72", "fov converter math");
-
-  // ---------- How it looks ----------
-
-  /** Approximate: BFV doesn't publish soldier dimensions, so a 1.8 m person. */
-  const SOLDIER_H = 1.8, EYE_H = 1.6;
-  /** Measured BFV sprint speed (SMK Gaming's test, via MP1st). */
-  const SPRINT = 6.04;
-  const MONITOR = 16 / 9, MONITOR_H = 1080;
-  const guns = () => (window.WEAPON_STATS?.weapons || [])
-    .filter((w) => w.base?.ADSStandRecoilInitialUp != null)
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  let vis, playing = false, t0 = 0;
-
-  function buildVis(root) {
-    const v = prefs.vis;
-    const setup = (key) => `
-      <div class="vis-setup" data-vis="${key}">
-        <div class="gs-seg small" role="group" aria-label="Aspect ratio">${SHAPES.map((x) => `<button type="button" data-shape="${x}">${x}</button>`).join("")}</div>
-        <label class="fov-range"><span class="fov-label">FOV</span><input type="range" min="${FOV_MIN}" max="${FOV_MAX}" step="1" aria-label="FOV"><output></output></label>
-        <canvas class="vis-canvas" role="img"></canvas>
-        <dl class="vis-stats"></dl>
-      </div>`;
-    const box = document.createElement("div");
-    box.className = "gs-group vis";
-    box.innerHTML = `
-      <h3>How it looks</h3>
-      <p class="sens-note">Compare two setups on a 16:9 monitor. The soldier is about 1.8 m tall (BFV's real size isn't published) and sprints at 6 m/s, as measured in game.</p>
-      <div class="vis-controls">
-        <label class="fov-range"><span class="fov-label">Distance</span><input type="range" min="5" max="150" step="5" data-vis="dist" aria-label="Distance"><output></output></label>
-        <label class="vis-gun"><span class="fov-label">Recoil of</span><select class="field" data-vis="gun"><option value="">No gun</option>${guns().map((w) => `<option>${w.name}</option>`).join("")}</select></label>
-        <label class="sens-check vis-close"><input type="checkbox" data-vis="close"> Close-up (4× around the crosshair)</label>
-        <button type="button" class="btn ghost" data-vis="play">Play sprint</button>
-      </div>
-      <div class="vis-pair">${setup("a")}${setup("b")}</div>
-      <p class="sens-note">The amber line is the gun's first-shot kick when aiming. A higher FOV draws everything smaller, the kick included, so it moves fewer pixels on screen. Scopes zoom the target and the kick by the same amount.</p>`;
-    root.querySelector(".sens-layout").append(box);
-    vis = { box, dist: box.querySelector('[data-vis="dist"]'), gun: box.querySelector('[data-vis="gun"]'), play: box.querySelector('[data-vis="play"]'), setups: {} };
-    for (const key of ["a", "b"]) {
-      const el = box.querySelector(`[data-vis="${key}"]`);
-      const s = { el, seg: el.querySelector(".gs-seg"), fov: el.querySelector("input"), out: el.querySelector("output"), canvas: el.querySelector("canvas"), stats: el.querySelector("dl") };
-      s.seg.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { v[key].shape = b.dataset.shape; onChange?.(); drawVis(); } });
-      s.fov.addEventListener("input", () => { v[key].fov = Number(s.fov.value); onChange?.(); drawVis(); });
-      vis.setups[key] = s;
-    }
-    vis.dist.addEventListener("input", () => { v.dist = Number(vis.dist.value); onChange?.(); drawVis(); });
-    vis.close = box.querySelector('[data-vis="close"]');
-    vis.close.addEventListener("change", () => { v.close = vis.close.checked; onChange?.(); drawVis(); });
-    vis.gun.addEventListener("change", () => { v.gun = vis.gun.value; onChange?.(); drawVis(); });
-    vis.play.addEventListener("click", () => {
-      playing = !playing;
-      vis.play.textContent = playing ? "Stop" : "Play sprint";
-      t0 = performance.now();
-      if (playing) requestAnimationFrame(tick); else drawVis();
-    });
-    new ResizeObserver(() => drawVis()).observe(vis.box);
-  }
-
-  function tick(now) {
-    // Stop when the tab is switched away (the section is hidden).
-    if (!playing || !vis.box.offsetParent) { playing = false; vis.play.textContent = "Play sprint"; drawVis(); return; }
-    drawVis((now - t0) / 1000);
-    requestAnimationFrame(tick);
-  }
-
-  function drawVis(time = null) {
-    if (!vis) return;
-    const v = prefs.vis;
-    vis.dist.value = v.dist;
-    vis.dist.nextElementSibling.textContent = `${v.dist} m`;
-    vis.gun.value = v.gun;
-    vis.close.checked = v.close;
-    // Close-up zooms both pictures the same amount around the crosshair, so they still compare.
-    const z = v.close ? 4 : 1;
-    const gun = guns().find((w) => w.name === v.gun)?.base;
-    const css = getComputedStyle(document.body);
-    const color = (name) => css.getPropertyValue(name).trim();
-    for (const [key, s] of Object.entries(vis.setups)) {
-      const { shape, fov } = v[key];
-      for (const b of s.seg.children) b.setAttribute("aria-pressed", String(b.dataset.shape === shape));
-      s.fov.value = fov;
-      s.out.textContent = fov;
-      const a = aspect(shape), th = tanHalf(fov);
-      // Canvas: a 16:9 monitor at the column's width.
-      const W = s.canvas.clientWidth, H = W / MONITOR, dpr = devicePixelRatio || 1;
-      if (!W) continue;
-      s.canvas.width = Math.round(W * dpr);
-      s.canvas.height = Math.round(H * dpr);
-      s.canvas.style.height = `${H}px`;
-      const g = s.canvas.getContext("2d");
-      g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // Metres at distance d → canvas pixels (y up from eye level, x right of centre).
-      const d = v.dist;
-      const py = (H / 2) / (d * th), px = (W / 2) / (d * th * a);
-      const cx = W / 2, cy = H / 2;
-      g.fillStyle = color("--surface-3"); g.fillRect(0, 0, W, cy);
-      g.fillStyle = color("--surface-1"); g.fillRect(0, cy, W, H - cy);
-      // Sprinting: the soldier crosses the visible width and wraps around.
-      const viewW = 2 * d * th * a, shownW = viewW / z, margin = 0.6;
-      const x = time == null ? 0 : ((time * SPRINT) % (shownW + 2 * margin)) - shownW / 2 - margin;
-      const zx = px * z, zy = py * z;
-      const sx = cx + x * zx, ground = cy + EYE_H * zy;
-      g.fillStyle = color("--text");
-      g.beginPath();
-      g.ellipse(sx, ground - 1.68 * zy, 0.12 * zx, 0.12 * zy, 0, 0, Math.PI * 2);
-      g.fill();
-      g.fillRect(sx - 0.22 * zx, ground - 1.52 * zy, 0.44 * zx, 0.68 * zy);
-      g.fillRect(sx - 0.18 * zx, ground - 0.86 * zy, 0.15 * zx, 0.86 * zy);
-      g.fillRect(sx + 0.03 * zx, ground - 0.86 * zy, 0.15 * zx, 0.86 * zy);
-      // Crosshair.
-      g.strokeStyle = color("--muted"); g.lineWidth = 1;
-      g.beginPath(); g.moveTo(cx - 6, cy); g.lineTo(cx + 6, cy); g.moveTo(cx, cy - 6); g.lineTo(cx, cy + 6); g.stroke();
-      // First-shot kick: straight up by the recoil angle, sideways range as a bar on top.
-      let kickPx = null;
-      if (gun) {
-        const up = Math.tan((gun.ADSStandRecoilInitialUp * Math.PI) / 180);
-        const side = Math.tan((Math.max(gun.ADSStandRecoilLeft || 0, gun.ADSStandRecoilRight || 0) * Math.PI) / 180);
-        const ky = (z * (H / 2) * up) / th, kx = (z * (W / 2) * side) / (th * a);
-        kickPx = ((MONITOR_H / 2) * up) / th;
-        g.strokeStyle = color("--accent"); g.lineWidth = 2;
-        g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx, cy - ky); g.stroke();
-        if (kx > 0.5) { g.beginPath(); g.moveTo(cx - kx, cy - ky); g.lineTo(cx + kx, cy - ky); g.stroke(); }
-        g.fillStyle = color("--accent"); g.beginPath(); g.arc(cx, cy - ky, 3, 0, Math.PI * 2); g.fill();
-      }
-      s.canvas.setAttribute("aria-label", `${shape} at FOV ${fov}: soldier at ${d} m`);
-      // Numbers on a 1080p monitor.
-      const k = MONITOR_H / H;
-      const rows = [
-        ["Horizontal view", `${(2 * Math.atan(th * a) * 180 / Math.PI).toFixed(1)}°`],
-        ["Soldier on a 1080p screen", `${Math.round(0.44 * px * k)} × ${Math.round(SOLDIER_H * py * k)} px`],
-        ["Sprints across the screen in", `${(viewW / SPRINT).toFixed(1)} s`],
-      ];
-      if (kickPx != null) rows.push(["First-shot kick", `${Math.round(kickPx)} px`]);
-      s.stats.innerHTML = rows.map(([dt, dd]) => `<dt>${dt}</dt><dd>${dd}</dd>`).join("");
-    }
-  }
 
   return { render, status: () => "" };
 })();
