@@ -45,7 +45,9 @@ window.Sensitivity = (() => {
     prefs.cfov ??= 90;
     if (!container.dataset.built) build(container);
     for (const k of ["w", "h", "fov", "cfov"]) els[k].value = prefs[k];
-    els.coef.value = prefs.coef ?? "";
+    prefs.coefOn ??= prefs.coef != null;
+    els.coefOn.checked = prefs.coefOn;
+    els.coef.value = prefs.coefOn ? prefs.coef ?? "" : "";
     update();
   }
 
@@ -62,6 +64,8 @@ window.Sensitivity = (() => {
               <label>FOV slider<input class="field" data-k="fov" type="number" inputmode="numeric" min="1" max="179" step="1"></label>
               <label>Coefficient %<input class="field" data-k="coef" type="number" inputmode="decimal" min="0" step="1"></label>
             </div>
+            <label class="sens-check"><input type="checkbox" data-out="coefOn"> Change the coefficient</label>
+            <p class="sens-warn" data-out="coefWarn">Only change this if you know what you're doing. The coefficient that matches your aspect ratio is right for most people. Lower makes big scopes slower, which some snipers like.</p>
             <p class="sens-note" data-out="ratio"></p>
             <p class="sens-note">Use the resolution the game <b>renders</b> at. If you play 1920×1440 stretched on a 1080p monitor, put 1920 and 1440.
               FOV is the number on the left of the slider, not the one in brackets.</p>
@@ -130,6 +134,16 @@ window.Sensitivity = (() => {
       </div>`;
     els = Object.fromEntries([...root.querySelectorAll("[data-k]")].map((e) => [e.dataset.k, e]));
     els.ratio = root.querySelector('[data-out="ratio"]');
+    els.coefOn = root.querySelector('[data-out="coefOn"]');
+    els.coefWarn = root.querySelector('[data-out="coefWarn"]');
+    els.coefOn.addEventListener("change", () => {
+      prefs.coefOn = els.coefOn.checked;
+      if (!prefs.coefOn) prefs.coef = null;
+      els.coef.value = "";
+      onChange?.();
+      update();
+      if (prefs.coefOn) els.coef.focus();
+    });
     els.rows = root.querySelector('[data-out="rows"]');
     els.cfovText = root.querySelector('[data-out="cfovText"]');
     els.fovResult = root.querySelector('[data-out="fovResult"]');
@@ -157,9 +171,11 @@ window.Sensitivity = (() => {
     const ratio = w > 0 && h > 0 ? w / h : NaN;
     const auto = Math.round(ratio * 100);
     els.coef.placeholder = Number.isFinite(ratio) ? String(auto) : "";
-    const coef = prefs.coef ?? ratio * 100;
+    els.coef.disabled = !prefs.coefOn;
+    els.coefWarn.hidden = !prefs.coefOn;
+    const coef = prefs.coefOn && prefs.coef != null ? prefs.coef : ratio * 100;
     els.ratio.textContent = Number.isFinite(ratio)
-      ? `${ratioName(ratio)} (${ratio.toFixed(3)}), so the default coefficient is ${auto}. Leave the box empty to use it, or go lower if you want big scopes slower.`
+      ? `${ratioName(ratio)} (${ratio.toFixed(3)}), so the matching coefficient is ${auto}.`
       : "Type your resolution to see your aspect ratio.";
     els.rows.innerHTML = "";
     const ok = Number.isFinite(ratio) && fov > 0 && fov < 180 && coef >= 0;

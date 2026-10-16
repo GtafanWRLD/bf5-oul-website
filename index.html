@@ -538,6 +538,11 @@
   .sens-fields .field { width: 100%; font-variant-numeric: tabular-nums; }
   .sens-note { margin: 10px 0 0; color: var(--muted); font-size: 13px; text-wrap: pretty; }
   .sens-note b { color: var(--text); font-weight: 600; }
+  .sens-check { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13.5px; cursor: pointer; }
+  .sens-check input { width: 16px; height: 16px; margin: 0; }
+  .sens-warn { margin: 8px 0 0; padding: 8px 10px; border-radius: var(--radius-s); background: rgb(240 167 58 / .1); color: var(--accent); font-size: 13px; text-wrap: pretty; }
+  .sens-warn[hidden] { display: none; }
+  .sens-fields .field:disabled { opacity: .55; cursor: not-allowed; }
   .sens-table { margin-top: 10px; }
   .sens-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 0 0 6px; }
   .sens-table td { padding: 6px 0; }
@@ -743,12 +748,12 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="catalog.js?v=202610160320"></script>
-<script src="weapon-stats.js?v=202610160320"></script>
-<script src="gun-stats.js?v=202610160320"></script>
-<script src="vehicle-specs.js?v=202610160320"></script>
-<script src="vehicle-upgrades.js?v=202610160320"></script>
-<script src="sensitivity.js?v=202610160320"></script>
+<script src="catalog.js?v=202610160330"></script>
+<script src="weapon-stats.js?v=202610160330"></script>
+<script src="gun-stats.js?v=202610160330"></script>
+<script src="vehicle-specs.js?v=202610160330"></script>
+<script src="vehicle-upgrades.js?v=202610160330"></script>
+<script src="sensitivity.js?v=202610160330"></script>
 <script>
 "use strict";
 
