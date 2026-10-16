@@ -310,9 +310,11 @@
   body:not([data-tab="stats"]) .stats-only { display: none !important; }
   body:not([data-tab="veh"]) .veh-only { display: none !important; }
   body:not([data-tab="sens"]) .sens-only { display: none !important; }
+  body:not([data-tab="rand"]) .rand-only { display: none !important; }
   body[data-tab="stats"] .board-area, body[data-tab="stats"] .tiers-only,
   body[data-tab="veh"] .board-area, body[data-tab="veh"] .tiers-only,
-  body[data-tab="sens"] .board-area, body[data-tab="sens"] .tiers-only { display: none !important; }
+  body[data-tab="sens"] .board-area, body[data-tab="sens"] .tiers-only,
+  body[data-tab="rand"] .board-area, body[data-tab="rand"] .tiers-only { display: none !important; }
 
   /* Players / Weapons / Vehicles / Maps under the Tier lists tab. */
   .subtabs {
@@ -568,6 +570,32 @@
   @media (max-width: 520px) { .fov-rows { grid-template-columns: 1fr; gap: 6px; } }
   @media (max-width: 800px) { .sens-layout { grid-template-columns: 1fr; } }
 
+  /* Loadout randomizer */
+  #randomizer .gs-toolbar { justify-content: space-between; }
+  .rand-card { max-width: 760px; margin-top: 16px; padding: 18px; border-radius: var(--radius-l); background: var(--surface-1); box-shadow: var(--shadow-1); }
+  .rand-card.enter { animation: rand-in var(--duration-fast) var(--ease-smooth-out); }
+  @keyframes rand-in { from { opacity: 0; translate: 0 6px; } }
+  @media (prefers-reduced-motion: reduce) { .rand-card.enter { animation: none; } }
+  .rand-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .rand-title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .rand-cls { color: var(--accent); font: 700 28px/1 var(--font-display); letter-spacing: .03em; text-transform: uppercase; }
+  .rand-role { color: var(--muted); font-weight: 600; }
+  .rand-primary { display: flex; align-items: center; gap: 18px; margin-top: 16px; padding: 14px; border-radius: var(--radius-m); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+  .rand-img { width: 220px; max-width: 40%; max-height: 110px; object-fit: contain; }
+  .rand-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .rand-name { font: 700 24px/1.1 var(--font-display); letter-spacing: .02em; }
+  .rand-sub { color: var(--accent); font-size: 13.5px; font-weight: 600; }
+  .rand-specs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; counter-reset: tier; }
+  .rand-specs li { counter-increment: tier; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); font-size: 13px; font-weight: 600; }
+  .rand-specs li::before { content: counter(tier) " "; color: var(--muted); font-weight: 500; }
+  .rand-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
+  .rand-item { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 10px 12px; border-radius: var(--radius-m); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+  .rand-thumb { width: 56px; height: 40px; object-fit: contain; flex: 0 0 56px; }
+  .rand-item-text { display: flex; flex-direction: column; min-width: 0; }
+  .rand-label { color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+  .rand-item-name { font-weight: 600; }
+  @media (max-width: 560px) { .rand-primary { flex-direction: column; align-items: flex-start; } .rand-img { max-width: 100%; } }
+
   @media (max-width: 900px) {
     .vu-detail-top { grid-template-columns: 1fr; }
     .gs-head, .gs-row { grid-template-columns: minmax(150px, 1fr) repeat(3, 64px); gap: 10px; }
@@ -668,6 +696,7 @@
       <button data-top="stats">Gun stats</button>
       <button data-top="veh">Vehicle upgrades</button>
       <button data-top="sens">Sensitivity &amp; FOV</button>
+      <button data-top="rand">Randomizer</button>
       <span class="tab-indicator" aria-hidden="true"></span>
     </nav>
   </div>
@@ -726,6 +755,7 @@
 
   <section id="gunStats" class="stats-only" aria-label="Gun stats"></section>
   <section id="vehUpgrades" class="veh-only" aria-label="Vehicle upgrades"></section>
+  <section id="randomizer" class="rand-only" aria-label="Loadout randomizer"></section>
   <section id="sensCalc" class="sens-only" aria-label="Sensitivity and FOV calculators"></section>
 
   <footer><p>Player, platoon and server data from <a href="https://gametools.network" target="_blank" rel="noopener">gametools.network</a>. Its roster endpoint often lists only part of a platoon, so members it leaves out are found by scanning live servers for the platoon's tag while the page is open (each find is checked against the player's profile, since tags aren't unique). Anyone still missing can be added by name. Your tier lists are stored only in this browser. Not affiliated with EA or DICE.</p></footer>
@@ -748,12 +778,14 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="catalog.js?v=202610160420"></script>
-<script src="weapon-stats.js?v=202610160420"></script>
-<script src="gun-stats.js?v=202610160420"></script>
-<script src="vehicle-specs.js?v=202610160420"></script>
-<script src="vehicle-upgrades.js?v=202610160420"></script>
-<script src="sensitivity.js?v=202610160420"></script>
+<script src="catalog.js?v=202610160510"></script>
+<script src="weapon-stats.js?v=202610160510"></script>
+<script src="gun-stats.js?v=202610160510"></script>
+<script src="vehicle-specs.js?v=202610160510"></script>
+<script src="vehicle-upgrades.js?v=202610160510"></script>
+<script src="sensitivity.js?v=202610160510"></script>
+<script src="loadouts.js?v=202610160510"></script>
+<script src="randomizer.js?v=202610160510"></script>
 <script>
 "use strict";
 
@@ -867,6 +899,8 @@ const freshState = () => ({
   vehicleUpgrades: {},
   /** Sensitivity tab: resolution, FOV and coefficient typed into the calculator. */
   sensitivity: {},
+  /** Randomizer tab: picked class and the last rolled loadout. */
+  randomizer: {},
 });
 
 /** Fills in anything a saved state is missing (e.g. a tab added after it was saved). */
@@ -879,6 +913,7 @@ function normalize(s) {
   s.stats ||= {};
   s.vehicleUpgrades ||= {};
   s.sensitivity ||= {};
+  s.randomizer ||= {};
   s.platoons ||= {};
   s.playerBoards ||= {};
   // The Unknown tier is gone: anyone left in it goes back to the top of Unranked.
@@ -956,7 +991,7 @@ function switchTab(tab) {
 }
 
 /** Top-level tabs that aren't tier lists. */
-const TOOL_TABS = ["stats", "veh", "sens"];
+const TOOL_TABS = ["stats", "veh", "sens", "rand"];
 /** Which top tab a tab belongs to (every tier list sits under "tiers"). */
 const topTab = (tab = state.tab) => (TOOL_TABS.includes(tab) ? tab : "tiers");
 
@@ -973,6 +1008,7 @@ $("#subtabs").addEventListener("click", (e) => {
 function showTabStatus() {
   if (state.tab === "players") return showCount();
   if (state.tab === "stats") return setStatus(window.GunStats ? GunStats.status() : "Couldn't load the gun stats (gun-stats.js is missing next to index.html).");
+  if (state.tab === "rand") return setStatus(window.Randomizer ? "" : "Couldn't load the randomizer (randomizer.js is missing next to index.html).");
   if (state.tab === "sens") return setStatus(window.Sensitivity ? "" : "Couldn't load the calculator (sensitivity.js is missing next to index.html).");
   if (state.tab === "veh") return setStatus(window.VehicleUpgrades ? VehicleUpgrades.status() : "Couldn't load the vehicle upgrades (vehicle-upgrades.js is missing next to index.html).");
   const all = Object.keys(state.items[state.tab]).length;
@@ -1333,6 +1369,10 @@ function render() {
   }
   if (state.tab === "veh") {
     window.VehicleUpgrades?.render($("#vehUpgrades"), state.vehicleUpgrades, save);
+    return;
+  }
+  if (state.tab === "rand") {
+    window.Randomizer?.render($("#randomizer"), state.randomizer, save);
     return;
   }
   if (state.tab === "sens") {

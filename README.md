@@ -11,6 +11,8 @@ Drag-and-drop tier lists and gun stats for Battlefield V:
   plan a build. Upgrade lists from the [Battlefield wiki](https://battlefield.fandom.com/wiki/Specializations_(Battlefield_V)/Vehicles).
 - **Sensitivity & FOV**: per-scope zoom sensitivity values for Uniform Soldier Aiming at coefficient 0,
   and an FOV converter that tells you what FOV to set when you change your in-game aspect ratio.
+- **Randomizer**: a random loadout for any class (combat role, primary with specializations and sight,
+  sidearm, gadgets and throwable) to copy and share. Loadout lists from the Battlefield wiki.
 
 Add notes to any card (double-click), rename / recolor / reorder tiers, and save a tier list as a PNG.
 Everything is saved in your browser's local storage: nothing is uploaded anywhere.
