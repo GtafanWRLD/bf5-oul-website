@@ -8,11 +8,29 @@
  *
  *   k = coefficient × tan(vertical FOV / 2)
  *   slider(z) = z × atan(k / z) / atan(k)
+ *
+ * Below that, an FOV converter: what slider value on another aspect ratio matches your setup's
+ * width, area or height. hfov = 2 × atan(tan(vfov / 2) × aspect).
  */
 window.Sensitivity = (() => {
   const ZOOMS = [1, 1.25, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10];
   const RATIOS = [[4 / 3, "4:3", 0.008], [1.25, "5:4", 0.008], [1.6, "16:10", 0.008], [16 / 9, "16:9", 0.008], [21 / 9, "21:9", 0.02]];
   const TOO_HIGH = 200;
+  /** BFV's FOV slider range. */
+  const FOV_MIN = 50, FOV_MAX = 105;
+  /** Target presets, entered as the ratio itself (only width ÷ height matters). */
+  const PRESETS = [[4, 3], [5, 4], [16, 10], [16, 9], [21, 9]];
+  const rad = (d) => (d * Math.PI) / 180, deg = (r) => (r * 180) / Math.PI;
+  const tanHalf = (vfov) => Math.tan(rad(vfov) / 2);
+  const hfov = (vfov, a) => deg(2 * Math.atan(tanHalf(vfov) * a));
+  /** [name, explanation, tan(new vfov / 2) from tan(old vfov / 2) and both aspect ratios]. */
+  const MATCHES = [
+    ["Width match", "Enemies are the same width as now and your horizontal view stays the same.", (t, aOld, aNew) => (t * aOld) / aNew],
+    ["Area match", "Enemies cover the same amount of screen. Halfway between the other two.", (t, aOld, aNew) => t * Math.sqrt(aOld / aNew)],
+    ["Height match", "Same slider number, so enemies are the same height. Your horizontal view changes with the screen shape.", (t) => t],
+  ];
+  /** Exact vertical FOV on the target for each match. */
+  const convert = (vfov, aOld, aNew) => MATCHES.map(([, , f]) => deg(2 * Math.atan(f(tanHalf(vfov), aOld, aNew))));
 
   /** Slider percentage for zoom `z` (coefficient in %, FOV in degrees), rounded like the sheet. */
   const slider = (z, coef, fov) => {
@@ -30,8 +48,10 @@ window.Sensitivity = (() => {
     prefs.w ??= 1920;
     prefs.h ??= 1080;
     prefs.fov ??= 90;
+    prefs.tw ??= 4;
+    prefs.th ??= 3;
     if (!container.dataset.built) build(container);
-    for (const k of ["w", "h", "fov"]) els[k].value = prefs[k];
+    for (const k of ["w", "h", "fov", "tw", "th"]) els[k].value = prefs[k];
     els.coef.value = prefs.coef ?? "";
     update();
   }
@@ -83,7 +103,7 @@ window.Sensitivity = (() => {
               <li>Enter your resolution and FOV above, then put each value into the matching scope's zoom sensitivity.</li>
               <li>Leave Soldier Zoom Sensitivity at 100%.</li>
             </ol>
-            <p class="sens-note">FOV numbers depend on aspect ratio. 105 on 4:3 stretched is a lot narrower than 105 on 16:9, so don't just copy someone else's.</p>
+            <p class="sens-note">FOV numbers depend on aspect ratio. 105 on 4:3 stretched is a lot narrower than 105 on 16:9, so don't just copy someone else's. The FOV converter below works out the matching number.</p>
           </div>
           <details class="gs-group sens-math">
             <summary>How it's calculated</summary>
@@ -101,10 +121,36 @@ window.Sensitivity = (() => {
             <p class="sens-note">Source: DICE's design write-up "Consistent 360 degree distance aim".</p>
           </details>
         </div>
+        <div class="gs-group fov-conv">
+          <h3>FOV converter</h3>
+          <p class="sens-note">Uses your setup above as the starting point. Pick the screen shape you want to switch to, or type a resolution.</p>
+          <div class="fov-target">
+            <div class="gs-seg small" role="group" aria-label="Target aspect ratio" data-out="presets">
+              ${PRESETS.map(([w, h]) => `<button type="button" data-w="${w}" data-h="${h}">${w}:${h}</button>`).join("")}
+            </div>
+            <div class="sens-fields fov-custom">
+              <label>Target width<input class="field" data-k="tw" type="number" inputmode="numeric" min="1" step="1"></label>
+              <label>Target height<input class="field" data-k="th" type="number" inputmode="numeric" min="1" step="1"></label>
+            </div>
+          </div>
+          <p class="sens-note" data-out="source"></p>
+          <div class="fov-options" data-out="options"></div>
+        </div>
       </div>`;
     els = Object.fromEntries([...root.querySelectorAll("[data-k]")].map((e) => [e.dataset.k, e]));
     els.ratio = root.querySelector('[data-out="ratio"]');
     els.rows = root.querySelector('[data-out="rows"]');
+    els.source = root.querySelector('[data-out="source"]');
+    els.options = root.querySelector('[data-out="options"]');
+    els.presets = root.querySelector('[data-out="presets"]');
+    els.presets.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      els.tw.value = prefs.tw = Number(b.dataset.w);
+      els.th.value = prefs.th = Number(b.dataset.h);
+      onChange?.();
+      update();
+    });
     for (const [k, input] of Object.entries(els)) {
       if (!input.dataset.k) continue;
       input.addEventListener("input", () => {
@@ -134,10 +180,51 @@ window.Sensitivity = (() => {
       if (v > TOO_HIGH) tr.lastChild.textContent = "Very high, check your slider goes this far";
       els.rows.append(tr);
     }
+    updateFov(ratio, fov);
+  }
+
+  function updateFov(aOld, vfov) {
+    const aNew = num(prefs.tw) / num(prefs.th);
+    for (const b of els.presets.children) b.setAttribute("aria-pressed", String(Math.abs(b.dataset.w / b.dataset.h - aNew) < 0.001));
+    els.options.innerHTML = "";
+    if (!(Number.isFinite(aOld) && vfov > 0 && vfov < 180 && aNew > 0 && Number.isFinite(aNew))) {
+      els.source.textContent = "Fill in your resolution, FOV and the target to see the conversion.";
+      return;
+    }
+    els.source.innerHTML = `Your setup is ${ratioName(aOld)} at FOV ${vfov}, which is <b>${hfov(vfov, aOld).toFixed(2)}°</b> wide. That's the horizontal angle you see, not a slider value. Converting to ${ratioName(aNew)} (${aNew.toFixed(3)}).`;
+    const tOld = tanHalf(vfov);
+    convert(vfov, aOld, aNew).forEach((exact, i) => {
+      const [name, why] = MATCHES[i];
+      const value = Math.round(exact);
+      const settable = value >= FOV_MIN && value <= FOV_MAX;
+      const card = document.createElement("div");
+      card.className = "fov-option" + (settable ? "" : " out");
+      let body;
+      if (settable) {
+        // Size on screen compared to now, at the rounded slider value people can actually set.
+        const tNew = tanHalf(value);
+        const width = (tOld * aOld) / (tNew * aNew), height = tOld / tNew;
+        const pct = (v) => `${Math.round(v * 100)}%`;
+        body = `<div class="fov-slider"><span class="fov-big">${value}</span><span class="muted">slider (exact ${exact.toFixed(2)})</span></div>
+          <dl><dt>Horizontal view</dt><dd>${hfov(value, aNew).toFixed(2)}°</dd>
+          <dt>Enemy width</dt><dd>${pct(width)}</dd><dt>Enemy height</dt><dd>${pct(height)}</dd><dt>Enemy size</dt><dd>${pct(width * height)}</dd></dl>`;
+      } else {
+        body = `<p class="fov-warn">Can't be set in game. This needs ${exact.toFixed(2)}, but the slider only goes from ${FOV_MIN} to ${FOV_MAX}.</p>`;
+      }
+      card.innerHTML = `<h4>${name}</h4><p class="sens-note">${why}</p>${body}`;
+      els.options.append(card);
+    });
   }
 
   // The sheet's worked example: 1920×1080, FOV 105, 6× → 190%.
   console.assert(slider(6, 177.78, 105) === 190 && slider(1, 178, 105) === 100, "sensitivity math");
+  // FOV converter: 4:3 at 105 is 120.16° wide; to 16:9 width 88.69, area 96.92; to 16:10 width 94.72; 16:10 at 105 to 16:9 width 99.10.
+  {
+    const r2 = (v) => Math.round(v * 100) / 100;
+    const c = convert(105, 4 / 3, 16 / 9).map(r2);
+    console.assert(r2(hfov(105, 4 / 3)) === 120.16 && c[0] === 88.69 && c[1] === 96.92 && c[2] === 105
+      && r2(convert(105, 4 / 3, 1.6)[0]) === 94.72 && r2(convert(105, 1.6, 16 / 9)[0]) === 99.1, "fov converter math");
+  }
 
   return { render, status: () => "" };
 })();
