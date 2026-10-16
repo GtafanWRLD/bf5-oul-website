@@ -17,7 +17,7 @@ window.Sensitivity = (() => {
   const RATIOS = [[4 / 3, "4:3", 0.008], [1.25, "5:4", 0.008], [1.6, "16:10", 0.008], [16 / 9, "16:9", 0.008], [21 / 9, "21:9", 0.02]];
   const TOO_HIGH = 200;
   /** BFV's FOV slider range. */
-  const FOV_MIN = 50, FOV_MAX = 105;
+  const FOV_MIN = 55, FOV_MAX = 105;
   const SHAPES = ["4:3", "5:4", "16:10", "16:9", "21:9"];
   const aspect = (shape) => { const [w, h] = shape.split(":"); return w / h; };
   const tanHalf = (vfov) => Math.tan((vfov * Math.PI) / 360);
