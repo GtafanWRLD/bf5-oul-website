@@ -550,18 +550,16 @@
   .sens-math summary { cursor: pointer; font: 700 16px var(--font-display); letter-spacing: .02em; }
   .sens-math[open] summary { margin-bottom: 10px; }
   .fov-conv { grid-column: 1 / -1; }
-  .fov-target { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 16px; margin-top: 12px; }
-  .fov-custom { flex: 0 1 320px; }
-  .fov-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
-  .fov-option { padding: 14px; border-radius: var(--radius-m); background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--line); }
-  .fov-option h4 { margin: 0; font: 700 18px var(--font-display); letter-spacing: .02em; }
-  .fov-option .sens-note { margin-top: 4px; min-height: 2.9em; }
-  .fov-slider { display: flex; align-items: baseline; gap: 8px; margin: 12px 0 10px; }
-  .fov-big { color: var(--accent); font: 700 34px/1 var(--font-display); font-variant-numeric: tabular-nums; }
-  .fov-option dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font-size: 13.5px; }
-  .fov-option dt { color: var(--muted); font-size: inherit; cursor: auto; text-decoration: none; }
-  .fov-option dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
-  .fov-warn { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius-s); background: rgb(236 106 94 / .12); color: var(--danger); font-size: 13.5px; font-weight: 600; text-wrap: pretty; }
+  .fov-rows { display: grid; grid-template-columns: max-content minmax(0, 360px); justify-content: start; align-items: center; gap: 10px 16px; margin-top: 14px; }
+  .fov-rows .gs-seg { width: fit-content; max-width: 100%; }
+  .fov-label { color: var(--muted); font-size: 13.5px; }
+  .fov-range { display: flex; align-items: center; gap: 12px; }
+  .fov-range input { flex: 1; min-width: 0; }
+  .fov-range output { min-width: 3ch; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .fov-result { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 18px; font-size: 16px; }
+  .fov-result .sens-note { flex-basis: 100%; margin: 0; }
+  .fov-big { color: var(--accent); font: 700 40px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+  @media (max-width: 520px) { .fov-rows { grid-template-columns: 1fr; gap: 6px; } }
   @media (max-width: 800px) { .sens-layout { grid-template-columns: 1fr; } }
 
   @media (max-width: 900px) {
@@ -744,12 +742,12 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="catalog.js?v=202610160100"></script>
-<script src="weapon-stats.js?v=202610160100"></script>
-<script src="gun-stats.js?v=202610160100"></script>
-<script src="vehicle-specs.js?v=202610160100"></script>
-<script src="vehicle-upgrades.js?v=202610160100"></script>
-<script src="sensitivity.js?v=202610160100"></script>
+<script src="catalog.js?v=202610160200"></script>
+<script src="weapon-stats.js?v=202610160200"></script>
+<script src="gun-stats.js?v=202610160200"></script>
+<script src="vehicle-specs.js?v=202610160200"></script>
+<script src="vehicle-upgrades.js?v=202610160200"></script>
+<script src="sensitivity.js?v=202610160200"></script>
 <script>
 "use strict";
 
