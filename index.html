@@ -582,9 +582,8 @@
   .rand-cls { color: var(--accent); font: 700 36px/1 var(--font-display); letter-spacing: .03em; text-transform: uppercase; }
   .rand-role { color: var(--muted); font-size: 17px; font-weight: 600; }
   .rand-primary { display: flex; align-items: center; gap: 28px; margin-top: 20px; padding: 22px; border-radius: var(--radius-m); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
-  /* EA's pictures are 255px squares with the gun in a strip across the middle: crop to a wide
-     frame. Drawn this big they blur, so #crisp sharpens the edges back up. */
-  .rand-img { width: 440px; max-width: 50%; aspect-ratio: 2 / 1; padding: 0 10px; object-fit: cover; flex: 0 0 auto; filter: url(#crisp); }
+  /* The picture is trimmed to the gun (randomizer.js) and never drawn bigger than it is, so it stays sharp. */
+  .rand-img { width: 260px; max-width: 45%; height: 120px; object-fit: scale-down; flex: 0 0 auto; }
   .rand-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .rand-name { font: 700 34px/1.1 var(--font-display); letter-spacing: .02em; }
   .rand-sub { color: var(--accent); font-size: 15px; font-weight: 600; }
@@ -597,7 +596,7 @@
   .rand-item-text { display: flex; flex-direction: column; min-width: 0; }
   .rand-label { color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
   .rand-item-name { font-size: 16px; font-weight: 600; }
-  @media (max-width: 560px) { .rand-primary { flex-direction: column; align-items: flex-start; } .rand-img { max-width: 100%; } .rand-name { font-size: 28px; } }
+  @media (max-width: 560px) { .rand-primary { flex-direction: column; align-items: flex-start; } .rand-img { max-width: 100%; height: auto; max-height: 120px; } .rand-name { font-size: 28px; } }
 
   @media (max-width: 900px) {
     .vu-detail-top { grid-template-columns: 1fr; }
@@ -674,8 +673,6 @@
 </style>
 </head>
 <body data-tab="players">
-<!-- Steepens the alpha edge of EA's small white weapon pictures so they stay crisp when drawn bigger. -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="crisp"><feComponentTransfer><feFuncA type="linear" slope="2.4" intercept="-0.5"/></feComponentTransfer></filter></svg>
 <header>
   <div class="topbar">
     <div class="brand">
@@ -783,14 +780,14 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="catalog.js?v=202610160540"></script>
-<script src="weapon-stats.js?v=202610160540"></script>
-<script src="gun-stats.js?v=202610160540"></script>
-<script src="vehicle-specs.js?v=202610160540"></script>
-<script src="vehicle-upgrades.js?v=202610160540"></script>
-<script src="sensitivity.js?v=202610160540"></script>
-<script src="loadouts.js?v=202610160540"></script>
-<script src="randomizer.js?v=202610160540"></script>
+<script src="catalog.js?v=202610160550"></script>
+<script src="weapon-stats.js?v=202610160550"></script>
+<script src="gun-stats.js?v=202610160550"></script>
+<script src="vehicle-specs.js?v=202610160550"></script>
+<script src="vehicle-upgrades.js?v=202610160550"></script>
+<script src="sensitivity.js?v=202610160550"></script>
+<script src="loadouts.js?v=202610160550"></script>
+<script src="randomizer.js?v=202610160550"></script>
 <script>
 "use strict";
 

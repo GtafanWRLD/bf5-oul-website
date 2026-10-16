@@ -50,6 +50,40 @@ window.Randomizer = (() => {
   const image = (name) => window.WEAPON_STATS?.weapons.find((w) => w.name === name)?.image
     || window.CATALOG?.weapons.find((w) => w.name.toLowerCase() === (CATALOG_NAMES[name] || name).toLowerCase())?.image;
 
+  /**
+   * Shows EA's picture with its empty transparent border cut off, so every gun fills the box the
+   * same way (the files come in different shapes: MG42 is 256×85, Type 11 a 255 square). EA's CDN
+   * only allows this for some images; the others show untrimmed.
+   */
+  function trimmed(img, src) {
+    const probe = new Image();
+    probe.crossOrigin = "anonymous";
+    probe.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = probe.naturalWidth;
+        c.height = probe.naturalHeight;
+        const g = c.getContext("2d");
+        g.drawImage(probe, 0, 0);
+        const d = g.getImageData(0, 0, c.width, c.height).data;
+        let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+        for (let y = 0; y < c.height; y++) {
+          for (let x = 0; x < c.width; x++) {
+            if (d[(y * c.width + x) * 4 + 3] > 8) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+          }
+        }
+        if (x1 < 0) { img.src = src; return; }
+        const out = document.createElement("canvas");
+        out.width = x1 - x0 + 1;
+        out.height = y1 - y0 + 1;
+        out.getContext("2d").drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+        img.src = out.toDataURL();
+      } catch { img.src = src; }
+    };
+    probe.onerror = () => { img.src = src; };
+    probe.src = src;
+  }
+
   const asText = (r) => [
     `${r.cls}: ${r.role}`,
     `Primary: ${r.gun} (${r.sight})`,
@@ -114,7 +148,7 @@ window.Randomizer = (() => {
 
     const primary = h("div", "rand-primary");
     const src = image(r.gun);
-    if (src) { const img = h("img", "rand-img"); img.src = src; img.alt = ""; primary.append(img); }
+    if (src) { const img = h("img", "rand-img"); img.alt = ""; trimmed(img, src); primary.append(img); }
     const info = h("div", "rand-info");
     info.append(h("div", "rand-name", r.gun), h("div", "rand-sub", r.sight));
     if (r.specs.length) {
