@@ -190,7 +190,7 @@ window.PlayerLookup = (() => {
     const links = h("div", "lk-links");
     for (const [text, url] of [
       ["Battlefield Tracker", `https://battlefieldtracker.com/bfv/profile/origin/${encodeURIComponent(who.name)}/overview`],
-      ["gametools", `https://gametools.network/stats/pc/playerid/${who.id}?game=bfv`],
+      ["gametools", `https://gametools.network/stats/pc/playerid/${encodeURIComponent(who.id)}?game=bfv`],
     ]) {
       const a = h("a", "btn ghost", text);
       a.href = url;
