@@ -604,16 +604,25 @@ window.PlayerLookup = (() => {
 
   /** The bot's record for the player on screen, once the history has loaded. */
   let currentKnown = null;
+  /** [seenAt, server] from the bot's latest online.json (sightings in the last 3 hours). */
+  let recentSeen = null;
   const NOT_ONLINE = "Not on any server right now.";
-  const lastSeen = () => (currentKnown?.rec[1] ? ` Last seen on ${currentKnown.rec[2]}, ${ago(currentKnown.rec[1])}.` : "");
+  /** The newest sighting we have: online.json's recent list, else the (up to 15 min older) history. */
+  const lastSeen = () => {
+    const fromHistory = currentKnown?.rec[1] ? [currentKnown.rec[1], currentKnown.rec[2]] : null;
+    const seen = [recentSeen, fromHistory].filter(Boolean).sort((a, b) => b[0] - a[0])[0];
+    return seen ? ` Last seen on ${seen[1]}, ${ago(seen[0])}.` : "";
+  };
 
   /** Online status: from the bot's last scan when it's recent, else by checking every live server. */
   async function findOnline(who, me) {
     const status = () => (me === run ? els.out.querySelector('[data-out="status"]') : null);
     const known = currentKnown;
     const live = await gistFile("online.json").catch(() => null);
+    recentSeen = null;
     if (live && Date.now() / 1000 - live.at < LIVE_MAX_AGE) {
       const lower = who.name.toLowerCase();
+      recentSeen = live.recent?.[who.id] || live.recent?.[who.userId] || (known && live.recent?.[known.id]) || null;
       const hit = live.online[who.id] || live.online[who.userId] || (known && live.online[known.id])
         || Object.values(live.online).find((o) => o[0].toLowerCase() === lower);
       const el = status();
