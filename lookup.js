@@ -10,6 +10,9 @@
  * gist (online.json after every scan, history.json every 15 min); otherwise bot-history.js, a
  * snapshot made by tools/build-bot-history.mjs, is used and online status comes from our own scan.
  * Country isn't available for BFV from any source.
+ *
+ * "Compare" puts two players side by side: headline stats with the better value marked, and the
+ * weapons both of them use.
  */
 window.PlayerLookup = (() => {
   /** The bot's gist (owner = the GitHub account its token belongs to). Empty id = not set up yet. */
@@ -84,15 +87,28 @@ window.PlayerLookup = (() => {
     root.innerHTML = `
       <form class="lk-search" role="search">
         <input class="field" name="q" placeholder="EA / Origin name (PC)" autocomplete="off" spellcheck="false" aria-label="Player name">
+        <input class="field" name="vs" placeholder="Compare with…" autocomplete="off" spellcheck="false" aria-label="Second player name" hidden>
         <button class="btn primary" type="submit">Look up</button>
+        <button class="btn ghost" type="button" data-act="compare" aria-pressed="false">Compare</button>
       </form>
       <div class="lk-recent"></div>
       <div class="lk-out"></div>`;
     els = { form: root.querySelector("form"), recent: root.querySelector(".lk-recent"), out: root.querySelector(".lk-out") };
+    const toggle = els.form.querySelector('[data-act="compare"]');
+    const setCompare = (on) => {
+      els.form.vs.hidden = !on;
+      toggle.setAttribute("aria-pressed", String(on));
+      els.form.querySelector('[type="submit"]').textContent = on ? "Compare" : "Look up";
+      toggle.textContent = on ? "Cancel" : "Compare";
+      if (on) els.form.vs.focus();
+    };
+    toggle.addEventListener("click", () => setCompare(els.form.vs.hidden));
     els.form.addEventListener("submit", (e) => {
       e.preventDefault();
       const q = els.form.q.value.trim();
-      if (q) lookup(q);
+      const vs = els.form.vs.value.trim();
+      if (q && vs && !els.form.vs.hidden) compare(q, vs);
+      else if (q) lookup(q);
     });
     if (prefs.last) lookup(prefs.last, false);
   }
@@ -118,24 +134,28 @@ window.PlayerLookup = (() => {
     }
   }
 
+  /** resolve(), falling back to the bot's history: an old name finds the player's current one. */
+  async function resolveAny(name, hist) {
+    try { return await resolve(name); } catch (err) {
+      const now = historyOf(await hist, [], name)?.rec[0].at(-1)[0];
+      if (now && now.toLowerCase() !== name.toLowerCase()) {
+        try { return await resolve(now); } catch {}
+      }
+      throw err;
+    }
+  }
+
+  const message = (text) => { els.out.innerHTML = ""; els.out.append(h("p", "gs-empty", text)); };
+
   async function lookup(name, remember = true) {
     const me = ++run;
     els.form.q.value = name;
-    els.out.innerHTML = "";
-    els.out.append(h("p", "gs-empty", `Looking up ${name}…`));
+    message(`Looking up ${name}…`);
     let who;
     const hist = loadHistory();
-    try { who = await resolve(name); } catch (err) {
-      // Maybe an old name: the bot knows which player had it and what they're called now.
-      const old = historyOf(await hist, [], name);
-      const now = old?.rec[0].at(-1)[0];
-      if (now && now.toLowerCase() !== name.toLowerCase()) {
-        try { who = await resolve(now); } catch {}
-      }
-      if (!who) {
-        if (me === run) { els.out.innerHTML = ""; els.out.append(h("p", "gs-empty", `No PC player named "${name}" (${err.message}).`)); }
-        return;
-      }
+    try { who = await resolveAny(name, hist); } catch (err) {
+      if (me === run) message(`No PC player named "${name}" (${err.message}).`);
+      return;
     }
     const [stats, games, history] = await Promise.all([
       api("/bfv/all/", { playerid: who.id, platform: "pc", skip_battlelog: true, format_values: false }, 30000).catch(() => null),
@@ -153,6 +173,130 @@ window.PlayerLookup = (() => {
     const known = historyOf(history, [who.id, who.userId], who.name);
     els.out.append(profile(who, stats, games, known, history));
     findOnline(who, me, known);
+  }
+
+  const statsOf = (who) => api("/bfv/all/", { playerid: who.id, platform: "pc", skip_battlelog: true, format_values: false }, 30000).catch(() => null);
+
+  async function compare(a, b) {
+    const me = ++run;
+    message(`Comparing ${a} and ${b}…`);
+    const hist = loadHistory();
+    const people = await Promise.all([a, b].map((name) => resolveAny(name, hist).catch(() => name)));
+    const missing = people.filter((p) => typeof p === "string");
+    if (missing.length) { if (me === run) message(`No PC player named ${missing.map((n) => `"${n}"`).join(" or ")}.`); return; }
+    const stats = await Promise.all(people.map(statsOf));
+    if (me !== run) return;
+    const gone = people.filter((p, i) => !stats[i]?.secondsPlayed).map((p) => p.name);
+    if (gone.length) { message(`No BFV stats for ${gone.join(" or ")} (never played, or their stats are private).`); return; }
+    els.out.innerHTML = "";
+    els.out.append(comparison(people, stats));
+  }
+
+  /** [label, value, format, which is better: 1 higher, -1 lower, 0 neither]. */
+  const COMPARE_ROWS = [
+    ["Rank", (s) => s.rank, (v) => num(v), 1],
+    ["K/D", (s) => s.killDeath, (v) => num(v, 2), 1],
+    ["Kills / min", (s) => s.killsPerMinute, (v) => num(v, 2), 1],
+    ["Score / min", (s) => s.scorePerMinute, (v) => num(v), 1],
+    ["Win rate", (s) => s.winPercent, (v) => `${num(v, 1)}%`, 1],
+    ["Accuracy", (s) => s.accuracy, (v) => `${num(v, 1)}%`, 1],
+    ["Headshot kills", (s) => (s.kills ? (100 * s.headShots) / s.kills : null), (v) => `${num(v, 1)}%`, 1],
+    ["Kills", (s) => s.kills, (v) => num(v), 1],
+    ["Deaths", (s) => s.deaths, (v) => num(v), 0],
+    ["Best streak", (s) => s.highestKillStreak, (v) => num(v), 1],
+    ["Longest headshot", (s) => s.longestHeadShot, (v) => `${num(v)} m`, 1],
+    ["Revives", (s) => s.revives, (v) => num(v), 1],
+    ["Heals", (s) => s.heals, (v) => num(v), 1],
+    ["Repairs", (s) => s.repairs, (v) => num(v), 1],
+    ["Kill assists", (s) => s.killAssists, (v) => num(v), 1],
+    ["Time played", (s) => s.secondsPlayed, hours, 0],
+    ["Rounds", (s) => s.roundsPlayed, (v) => num(v), 0],
+    ["Best class", (s) => s.bestClass, (v) => v || "—", 0],
+  ];
+
+  function comparison(people, stats) {
+    const box = h("div", "lk-profile enter");
+    const card = h("div", "lk-card lk-compare");
+    const t = h("table", "");
+    const head = h("tr");
+    head.append(h("th", "", ""));
+    people.forEach((p, i) => {
+      const th = h("th", "lk-vs-player");
+      const b = h("button", "lk-vs-name");
+      b.type = "button";
+      b.title = `Open ${p.name}'s profile`;
+      const av = h("img", "lk-vs-avatar");
+      av.src = stats[i].avatar || p.avatar || "";
+      av.alt = "";
+      av.onerror = () => av.remove();
+      b.append(av, h("span", "", p.name));
+      b.addEventListener("click", () => lookup(p.name));
+      th.append(b);
+      head.append(th);
+    });
+    const thead = h("thead");
+    thead.append(head);
+    const tbody = h("tbody");
+    for (const [label, get, fmt, better] of COMPARE_ROWS) {
+      const vals = stats.map(get);
+      const r = h("tr");
+      r.append(h("th", "", label));
+      const best = better && vals.every((v) => typeof v === "number") && vals[0] !== vals[1]
+        ? (better > 0 ? Math.max(...vals) : Math.min(...vals)) : null;
+      vals.forEach((v) => r.append(h("td", v === best ? "win" : "", fmt(v))));
+      tbody.append(r);
+    }
+    t.append(thead, tbody);
+    card.append(t);
+    box.append(card);
+
+    // Weapons both have kills with, most kills combined first.
+    const byName = stats.map((s) => new Map((s.weapons || []).filter((w) => w.kills > 0).map((w) => [w.weaponName, w])));
+    const shared = [...byName[0].keys()].filter((n) => byName[1].has(n))
+      .map((n) => [byName[0].get(n), byName[1].get(n)])
+      .sort((x, y) => y[0].kills + y[1].kills - (x[0].kills + x[1].kills));
+    if (shared.length) {
+      const wcard = h("div", "lk-card lk-table lk-shared");
+      const wh = h("div", "lk-table-head");
+      wh.append(h("h3", "", "Weapons you both use"), h("span", "lk-count", String(shared.length)));
+      wcard.append(wh);
+      const wt = h("table", "");
+      // Player names over their Kills / KPM pair.
+      const names = h("tr", "lk-vs-names");
+      names.append(h("th", "", ""));
+      for (const p of people) { const th = h("th", "", p.name); th.colSpan = 2; names.append(th); }
+      const tr = h("tr");
+      tr.append(h("th", "", "Weapon"));
+      for (let i = 0; i < people.length; i++) tr.append(h("th", "", "Kills"), h("th", "", "KPM"));
+      const wthead = h("thead");
+      wthead.append(names, tr);
+      const wbody = h("tbody");
+      for (const pair of shared) {
+        const r = h("tr");
+        const first = h("td");
+        const cell = h("div", "lk-item");
+        if (pair[0].image) { const i = h("img", "lk-thumb"); i.src = pair[0].image; i.alt = ""; i.loading = "lazy"; i.onerror = () => i.remove(); cell.append(i); }
+        const txt = h("span", "lk-item-text");
+        txt.append(h("span", "lk-item-name", pair[0].weaponName), h("span", "lk-item-type", pair[0].type || ""));
+        cell.append(txt);
+        first.append(cell);
+        r.append(first);
+        const kpmBest = Math.max(pair[0].killsPerMinute, pair[1].killsPerMinute);
+        for (const w of pair) {
+          r.append(h("td", "", num(w.kills)));
+          r.append(h("td", pair[0].killsPerMinute !== pair[1].killsPerMinute && w.killsPerMinute === kpmBest ? "win" : "", num(w.killsPerMinute, 2)));
+        }
+        wbody.append(r);
+      }
+      wt.append(wthead, wbody);
+      const scroll = h("div", "lk-scroll");
+      scroll.style.maxHeight = `${36 + 10 * 53}px`;
+      scroll.append(wt);
+      wcard.append(scroll);
+      box.append(wcard);
+    }
+    box.append(h("p", "lk-note", "Green marks the better value. Click a name to open that player's full profile."));
+    return box;
   }
 
   function profile(who, s, games, known, history) {

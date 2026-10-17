@@ -13,7 +13,7 @@ Drag-and-drop tier lists and gun stats for Battlefield V:
   and an FOV converter that tells you what FOV to set when you change your in-game aspect ratio.
 - **Randomizer**: a random loadout for any class (combat role, primary with specializations and sight,
   sidearm, gadgets and throwable) to copy and share. Loadout lists from the Battlefield wiki.
-- **Player lookup**: any PC player's BFV stats, top weapons and vehicles, platoons, other BF games they own,
+- **Player lookup**: any PC player's BFV stats (or two side by side with Compare), top weapons and vehicles, platoons, other BF games they own,
   the server they're playing on right now (from gametools.network), plus name history and where they were
   last seen from our Discord bot. To refresh that, drag the bot's data/store.json onto tools/update-bot-history.bat.
 

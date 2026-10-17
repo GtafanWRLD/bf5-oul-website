@@ -622,6 +622,18 @@
   .lk-table td.on { color: var(--accent); font-weight: 600; }
   .lk-sort { padding: 4px 0; border: 0; background: none; color: var(--muted); font: 600 12px var(--font); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
   .lk-sort:hover, .lk-sort.on { color: var(--text); }
+  .lk-search .btn[aria-pressed="true"] { color: var(--accent); }
+  .lk-compare table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14.5px; font-variant-numeric: tabular-nums; table-layout: fixed; }
+  .lk-compare th, .lk-compare td { padding: 9px 10px; box-shadow: 0 -1px 0 var(--line); text-align: center; }
+  .lk-compare thead th { box-shadow: none; padding-bottom: 12px; }
+  .lk-compare tbody th { text-align: left; color: var(--muted); font-weight: 500; width: 34%; }
+  .lk-compare td { font-weight: 600; }
+  .lk-compare td.win, .lk-table td.win { color: #a8d27e; }
+  .lk-vs-name { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; max-width: 100%; padding: 0; border: 0; background: none; color: var(--text); font: 700 20px/1.1 var(--font-display); letter-spacing: .02em; cursor: pointer; overflow-wrap: anywhere; }
+  .lk-vs-name:hover span { color: var(--accent); }
+  .lk-table .lk-vs-names th { color: var(--text); font-weight: 600; text-align: center; overflow-wrap: anywhere; }
+  .lk-table thead tr:nth-child(2) th { top: 31px; }
+  .lk-vs-avatar { width: 56px; height: 56px; border-radius: var(--radius-m); object-fit: cover; }
   .lk-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
   .lk-table thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-1); box-shadow: 0 1px 0 var(--line); }
   .lk-item { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -635,7 +647,11 @@
     .lk-body { grid-template-columns: 1fr; }
     .lk-links { flex-direction: row; flex-wrap: wrap; align-self: stretch; }
     .lk-thumb { display: none; }
-    .lk-table th:nth-child(4), .lk-table td:nth-child(4), .lk-table th:nth-child(5), .lk-table td:nth-child(5) { display: none; }
+    .lk-table:not(.lk-shared) th:nth-child(4), .lk-table:not(.lk-shared) td:nth-child(4), .lk-table:not(.lk-shared) th:nth-child(5), .lk-table:not(.lk-shared) td:nth-child(5) { display: none; }
+    .lk-shared .lk-thumb { display: none; }
+    .lk-shared table { font-size: 13px; }
+    .lk-shared td:not(:first-child), .lk-shared th:not(:first-child) { padding-left: 6px; }
+    .lk-shared .lk-scroll { padding-right: 6px; }
   }
 
   /* Loadout randomizer */
@@ -850,15 +866,15 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="catalog.js?v=202610170540"></script>
-<script src="weapon-stats.js?v=202610170540"></script>
-<script src="gun-stats.js?v=202610170540"></script>
-<script src="vehicle-specs.js?v=202610170540"></script>
-<script src="vehicle-upgrades.js?v=202610170540"></script>
-<script src="sensitivity.js?v=202610170540"></script>
-<script src="loadouts.js?v=202610170540"></script>
-<script src="randomizer.js?v=202610170540"></script>
-<script src="lookup.js?v=202610170540"></script>
+<script src="catalog.js?v=202610170640"></script>
+<script src="weapon-stats.js?v=202610170640"></script>
+<script src="gun-stats.js?v=202610170640"></script>
+<script src="vehicle-specs.js?v=202610170640"></script>
+<script src="vehicle-upgrades.js?v=202610170640"></script>
+<script src="sensitivity.js?v=202610170640"></script>
+<script src="loadouts.js?v=202610170640"></script>
+<script src="randomizer.js?v=202610170640"></script>
+<script src="lookup.js?v=202610170640"></script>
 <script>
 "use strict";
 
