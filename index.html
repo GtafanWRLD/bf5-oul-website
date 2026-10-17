@@ -615,14 +615,15 @@
   .lk-table-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
   .lk-table-head h3 { margin: 0; }
   .lk-count { color: var(--muted); font-size: 13px; }
-  .lk-table table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
-  .lk-table th { text-align: left; padding: 0 0 6px; color: var(--muted); font-weight: 500; }
+  .lk-table table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .lk-table th { text-align: left; padding: 6px 0; color: var(--muted); font-weight: 500; }
   .lk-table td { padding: 8px 0; box-shadow: 0 -1px 0 var(--line); vertical-align: middle; }
   .lk-table td:not(:first-child), .lk-table th:not(:first-child) { text-align: right; padding-left: 12px; }
   .lk-table td.on { color: var(--accent); font-weight: 600; }
   .lk-sort { padding: 4px 0; border: 0; background: none; color: var(--muted); font: 600 12px var(--font); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
   .lk-sort:hover, .lk-sort.on { color: var(--text); }
-  .lk-more { margin-top: 10px; width: 100%; justify-content: center; }
+  .lk-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  .lk-table thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-1); box-shadow: 0 1px 0 var(--line); }
   .lk-item { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .lk-thumb { width: 72px; height: 36px; object-fit: contain; flex: 0 0 72px; }
   .lk-item-text { display: flex; flex-direction: column; min-width: 0; }
@@ -849,15 +850,15 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="catalog.js?v=202610170520"></script>
-<script src="weapon-stats.js?v=202610170520"></script>
-<script src="gun-stats.js?v=202610170520"></script>
-<script src="vehicle-specs.js?v=202610170520"></script>
-<script src="vehicle-upgrades.js?v=202610170520"></script>
-<script src="sensitivity.js?v=202610170520"></script>
-<script src="loadouts.js?v=202610170520"></script>
-<script src="randomizer.js?v=202610170520"></script>
-<script src="lookup.js?v=202610170520"></script>
+<script src="catalog.js?v=202610170540"></script>
+<script src="weapon-stats.js?v=202610170540"></script>
+<script src="gun-stats.js?v=202610170540"></script>
+<script src="vehicle-specs.js?v=202610170540"></script>
+<script src="vehicle-upgrades.js?v=202610170540"></script>
+<script src="sensitivity.js?v=202610170540"></script>
+<script src="loadouts.js?v=202610170540"></script>
+<script src="randomizer.js?v=202610170540"></script>
+<script src="lookup.js?v=202610170540"></script>
 <script>
 "use strict";
 

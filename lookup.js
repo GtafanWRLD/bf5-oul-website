@@ -260,15 +260,15 @@ window.PlayerLookup = (() => {
 
   /**
    * A sortable list of weapons or vehicles. Click a column to sort by it (again to flip the order);
-   * the sort is remembered per table. Shows the first `top` rows until "Show all".
+   * the sort is remembered per table. Every row is listed in a box about `rows` rows tall that
+   * scrolls on its own, with the column headers pinned.
    */
-  function table(key, title, itemLabel, items, cols, top) {
+  function table(key, title, itemLabel, items, cols, rows) {
     const wrap = h("div", "lk-card lk-table");
-    let showAll = false;
     const draw = () => {
       const sort = prefs.sort?.[key] || { col: "kills", desc: true };
       const col = cols.find((c) => c[0] === sort.col) || cols[0];
-      const rows = [...items].sort((a, b) => ((col[2](a) ?? -1) - (col[2](b) ?? -1)) * (sort.desc ? -1 : 1));
+      const sorted = [...items].sort((a, b) => ((col[2](a) ?? -1) - (col[2](b) ?? -1)) * (sort.desc ? -1 : 1));
       wrap.innerHTML = "";
       const head = h("div", "lk-table-head");
       head.append(h("h3", "", title), h("span", "lk-count", String(items.length)));
@@ -292,7 +292,7 @@ window.PlayerLookup = (() => {
       const thead = h("thead");
       thead.append(tr);
       const tbody = h("tbody");
-      for (const item of showAll ? rows : rows.slice(0, top)) {
+      for (const item of sorted) {
         const r = h("tr");
         const first = h("td");
         const cell = h("div", "lk-item");
@@ -306,13 +306,11 @@ window.PlayerLookup = (() => {
         tbody.append(r);
       }
       t.append(thead, tbody);
-      wrap.append(t);
-      if (rows.length > top) {
-        const more = h("button", "btn ghost lk-more", showAll ? "Show fewer" : `Show all ${rows.length}`);
-        more.type = "button";
-        more.addEventListener("click", () => { showAll = !showAll; draw(); });
-        wrap.append(more);
-      }
+      const scroll = h("div", "lk-scroll");
+      // Header row plus `rows` rows of ~53px.
+      scroll.style.maxHeight = `${36 + rows * 53}px`;
+      scroll.append(t);
+      wrap.append(scroll);
     };
     draw();
     return wrap;
