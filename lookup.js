@@ -11,7 +11,7 @@
  * snapshot made by tools/build-bot-history.mjs, is used and online status comes from our own scan.
  * Country isn't available for BFV from any source.
  *
- * "Compare two" puts two players side by side: headline stats with the better value marked, and
+ * "Compare" puts two players side by side: headline stats with the better value marked, and
  * the weapons both of them use.
  *
  * Players looked up before are kept in this browser (bfv-lookup-cache), so they open instantly;
@@ -68,7 +68,8 @@ window.PlayerLookup = (() => {
   }
   const ago = (sec) => {
     const days = (Date.now() / 1000 - sec) / 86400;
-    if (days < 1 / 24) return "just now";
+    if (days < 1 / 1440) return "just now";
+    if (days < 1 / 24) return `${Math.round(days * 1440)} min ago`;
     if (days < 1) return `${Math.round(days * 24)} h ago`;
     if (days < 60) return `${Math.round(days)} days ago`;
     return new Date(sec * 1000).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
@@ -151,7 +152,7 @@ window.PlayerLookup = (() => {
     root.innerHTML = `
       <div class="gs-seg lk-mode" role="group" aria-label="Mode">
         <button type="button" data-mode="one">One player</button>
-        <button type="button" data-mode="two">Compare two</button>
+        <button type="button" data-mode="two">Compare</button>
       </div>
       <form class="lk-search" role="search">
         <input class="field lk-in-a" name="q" placeholder="EA / Origin name (PC)" autocomplete="off" spellcheck="false" aria-label="Player name">
@@ -323,7 +324,7 @@ window.PlayerLookup = (() => {
     ["Rank", (s) => s.rank, (v) => num(v), 1],
     ["K/D", (s) => s.killDeath, (v) => num(v, 2), 1],
     ["Kills / min", (s) => s.killsPerMinute, (v) => num(v, 2), 1],
-    ["Score / min", (s) => s.scorePerMinute, (v) => num(v), 1],
+    ["Score / min", (s) => s.scorePerMinute, (v) => num(v, 2), 1],
     ["Win rate", (s) => s.winPercent, (v) => `${num(v, 1)}%`, 1],
     ["Accuracy", (s) => s.accuracy, (v) => `${num(v, 1)}%`, 1],
     ["Headshot kills", (s) => (s.kills ? (100 * s.headShots) / s.kills : null), (v) => `${num(v, 1)}%`, 1],
@@ -464,8 +465,8 @@ window.PlayerLookup = (() => {
     const others = known?.rec[0].filter((n) => n[0].toLowerCase() !== who.name.toLowerCase());
     if (others?.length) {
       const aka = h("div", "lk-aka");
-      aka.append(h("span", "lk-aka-l", "Also known as "), document.createTextNode(others.map((n) => `${n[0]} (until ${ago(n[2])})`).join(", ")));
-      aka.title = `Names our Discord bot has seen this player use, data until ${history.dataUntil?.slice(0, 10) || "?"}`;
+      aka.append(h("span", "lk-aka-l", "Also known as "), document.createTextNode(others.map((n) => n[0]).join(", ")));
+      aka.title = `Older names our Discord bot has seen this player use (data until ${history.dataUntil?.slice(0, 10) || "?"})`;
       id.append(aka);
     }
     const status = h("div", "lk-status", "Checking who's online…");
@@ -497,7 +498,7 @@ window.PlayerLookup = (() => {
     const hero = h("div", "lk-hero");
     for (const [label, value] of [
       ["K/D", num(s.killDeath, 2)], ["Kills / min", num(s.killsPerMinute, 2)],
-      ["Win rate", `${num(s.winPercent, 1)}%`], ["Score / min", num(s.scorePerMinute)],
+      ["Win rate", `${num(s.winPercent, 1)}%`], ["Score / min", num(s.scorePerMinute, 2)],
     ]) {
       const t = h("div", "lk-hero-stat");
       t.append(h("span", "lk-hero-l", label), h("span", "lk-hero-v", value));
