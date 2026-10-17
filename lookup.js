@@ -13,7 +13,7 @@
  */
 window.PlayerLookup = (() => {
   /** The bot's gist (owner = the GitHub account its token belongs to). Empty id = not set up yet. */
-  const GIST = { owner: "GtafanWRLD", id: "" };
+  const GIST = { owner: "GtafanWRLD", id: "d610bba8e0ddb76e57fc36b7c97dc1f5" };
   /** Raw gist files are cached for up to 5 minutes; a per-minute query skips older copies. */
   const gistFile = async (name) => {
     if (!GIST.id) return null;
