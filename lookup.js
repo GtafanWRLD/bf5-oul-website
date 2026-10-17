@@ -207,30 +207,50 @@ window.PlayerLookup = (() => {
       return box;
     }
 
-    const tiles = h("div", "lk-tiles");
     const hs = s.kills ? (100 * s.headShots) / s.kills : null;
+    const side = h("aside", "lk-side lk-card");
+    const hero = h("div", "lk-hero");
     for (const [label, value] of [
-      ["K/D", num(s.killDeath, 2)], ["Kills / min", num(s.killsPerMinute, 2)], ["Score / min", num(s.scorePerMinute)],
-      ["Win rate", `${num(s.winPercent, 1)}%`], ["Accuracy", `${num(s.accuracy, 1)}%`], ["Headshot kills", hs == null ? "—" : `${num(hs, 1)}%`],
-      ["Kills", num(s.kills)], ["Deaths", num(s.deaths)], ["Time played", hours(s.secondsPlayed)],
-      ["Rounds", num(s.roundsPlayed)], ["Best streak", num(s.highestKillStreak)], ["Longest headshot", `${num(s.longestHeadShot)} m`],
-      ["Revives", num(s.revives)], ["Heals", num(s.heals)], ["Repairs", num(s.repairs)], ["Best class", s.bestClass || "—"],
+      ["K/D", num(s.killDeath, 2)], ["Kills / min", num(s.killsPerMinute, 2)],
+      ["Win rate", `${num(s.winPercent, 1)}%`], ["Score / min", num(s.scorePerMinute)],
     ]) {
-      const t = h("div", "lk-tile");
-      t.append(h("span", "lk-tile-v", value), h("span", "lk-tile-l", label));
-      tiles.append(t);
+      const t = h("div", "lk-hero-stat");
+      t.append(h("span", "lk-hero-l", label), h("span", "lk-hero-v", value));
+      hero.append(t);
     }
-    box.append(tiles);
+    side.append(hero);
+    for (const [title, rows] of [
+      ["Combat", [["Kills", num(s.kills)], ["Deaths", num(s.deaths)], ["Accuracy", `${num(s.accuracy, 1)}%`],
+        ["Headshot kills", hs == null ? "—" : `${num(hs, 1)}%`], ["Best streak", num(s.highestKillStreak)], ["Longest headshot", `${num(s.longestHeadShot)} m`]]],
+      ["Teamwork", [["Revives", num(s.revives)], ["Heals", num(s.heals)], ["Repairs", num(s.repairs)], ["Kill assists", num(s.killAssists)]]],
+      ["Games", [["Time played", hours(s.secondsPlayed)], ["Rounds", num(s.roundsPlayed)], ["Wins", num(s.wins)], ["Losses", num(s.loses)], ["Best class", s.bestClass || "—"]]],
+    ]) {
+      side.append(h("h3", "lk-group-title", title));
+      const dl = h("dl", "lk-list");
+      for (const [dt, dd] of rows) dl.append(h("dt", "", dt), h("dd", "", dd));
+      side.append(dl);
+    }
 
-    const weapons = (s.weapons || []).filter((w) => w.kills > 0).sort((a, b) => b.kills - a.kills).slice(0, 10);
-    if (weapons.length) box.append(table("Top weapons", ["Weapon", "Kills", "KPM", "Accuracy", "Headshots"], weapons.map((w) => [
-      [w.image, w.weaponName, w.type], num(w.kills), num(w.killsPerMinute, 2), `${num(w.accuracy, 1)}%`, `${num(w.headshots, 1)}%`,
-    ])));
-    const vehicles = (s.vehicles || []).filter((v) => v.kills > 0).sort((a, b) => b.kills - a.kills).slice(0, 6);
-    if (vehicles.length) box.append(table("Top vehicles", ["Vehicle", "Kills", "KPM", "Destroyed", "Time"], vehicles.map((v) => [
-      [v.image, v.vehicleName.replace(/\b\w/g, (c) => c.toUpperCase()), v.type], num(v.kills), num(v.killsPerMinute, 2), num(v.destroyed), hours(v.timeIn),
-    ])));
-    box.append(note(history));
+    const main = h("div", "lk-main");
+    const weapons = (s.weapons || []).filter((w) => w.kills > 0).map((w) => ({ ...w, name: w.weaponName }));
+    if (weapons.length) main.append(table("weapons", "Weapons", "Weapon", weapons, [
+      ["kills", "Kills", (w) => w.kills, (v) => num(v)],
+      ["kpm", "KPM", (w) => w.killsPerMinute, (v) => num(v, 2)],
+      ["acc", "Accuracy", (w) => w.accuracy, (v) => `${num(v, 1)}%`],
+      ["hs", "Headshots", (w) => w.headshots, (v) => `${num(v, 1)}%`],
+      ["time", "Time", (w) => w.timeEquipped, hours],
+    ], 10));
+    const vehicles = (s.vehicles || []).filter((v) => v.kills > 0).map((v) => ({ ...v, name: v.vehicleName.replace(/\b\w/g, (c) => c.toUpperCase()) }));
+    if (vehicles.length) main.append(table("vehicles", "Vehicles", "Vehicle", vehicles, [
+      ["kills", "Kills", (v) => v.kills, (x) => num(x)],
+      ["kpm", "KPM", (v) => v.killsPerMinute, (x) => num(x, 2)],
+      ["destroyed", "Destroyed", (v) => v.destroyed, (x) => num(x)],
+      ["time", "Time", (v) => v.timeIn, hours],
+    ], 6));
+
+    const body = h("div", "lk-body");
+    body.append(side, main);
+    box.append(body, note(history));
     return box;
   }
 
@@ -238,28 +258,63 @@ window.PlayerLookup = (() => {
     ? `Name history and last seen come from our Discord bot's server scans (data until ${history.dataUntil?.slice(0, 10) || "?"}). Country isn't available for BFV.`
     : "Name history and last seen aren't loaded (bot-history.js is missing). Country isn't available for BFV.");
 
-  function table(title, cols, rows) {
-    const wrap = h("div", "gs-group lk-table");
-    wrap.append(h("h3", "", title));
-    const t = h("table", "gs-stance");
-    const tr = h("tr");
-    cols.forEach((c) => tr.append(h("th", "", c)));
-    const thead = h("thead");
-    thead.append(tr);
-    const tbody = h("tbody");
-    for (const [[img, name, type], ...vals] of rows) {
-      const r = h("tr");
-      const first = h("td", "lk-item");
-      if (img) { const i = h("img", "lk-thumb"); i.src = img; i.alt = ""; i.loading = "lazy"; i.onerror = () => i.remove(); first.append(i); }
-      const txt = h("span", "lk-item-text");
-      txt.append(h("span", "lk-item-name", name), h("span", "lk-item-type", type || ""));
-      first.append(txt);
-      r.append(first);
-      vals.forEach((v) => r.append(h("td", "", v)));
-      tbody.append(r);
-    }
-    t.append(thead, tbody);
-    wrap.append(t);
+  /**
+   * A sortable list of weapons or vehicles. Click a column to sort by it (again to flip the order);
+   * the sort is remembered per table. Shows the first `top` rows until "Show all".
+   */
+  function table(key, title, itemLabel, items, cols, top) {
+    const wrap = h("div", "lk-card lk-table");
+    let showAll = false;
+    const draw = () => {
+      const sort = prefs.sort?.[key] || { col: "kills", desc: true };
+      const col = cols.find((c) => c[0] === sort.col) || cols[0];
+      const rows = [...items].sort((a, b) => ((col[2](a) ?? -1) - (col[2](b) ?? -1)) * (sort.desc ? -1 : 1));
+      wrap.innerHTML = "";
+      const head = h("div", "lk-table-head");
+      head.append(h("h3", "", title), h("span", "lk-count", String(items.length)));
+      wrap.append(head);
+      const t = h("table", "");
+      const tr = h("tr");
+      tr.append(h("th", "", itemLabel));
+      for (const [id, label] of cols) {
+        const th = h("th", "");
+        const b = h("button", "lk-sort" + (id === col[0] ? " on" : ""), label + (id === col[0] ? (sort.desc ? " ↓" : " ↑") : ""));
+        b.type = "button";
+        b.setAttribute("aria-label", `Sort by ${label}`);
+        b.addEventListener("click", () => {
+          prefs.sort = { ...prefs.sort, [key]: { col: id, desc: id === col[0] ? !sort.desc : true } };
+          onChange?.();
+          draw();
+        });
+        th.append(b);
+        tr.append(th);
+      }
+      const thead = h("thead");
+      thead.append(tr);
+      const tbody = h("tbody");
+      for (const item of showAll ? rows : rows.slice(0, top)) {
+        const r = h("tr");
+        const first = h("td");
+        const cell = h("div", "lk-item");
+        if (item.image) { const i = h("img", "lk-thumb"); i.src = item.image; i.alt = ""; i.loading = "lazy"; i.onerror = () => i.remove(); cell.append(i); }
+        const txt = h("span", "lk-item-text");
+        txt.append(h("span", "lk-item-name", item.name), h("span", "lk-item-type", item.type || ""));
+        cell.append(txt);
+        first.append(cell);
+        r.append(first);
+        for (const [id, , get, fmt] of cols) r.append(h("td", id === col[0] ? "on" : "", fmt(get(item))));
+        tbody.append(r);
+      }
+      t.append(thead, tbody);
+      wrap.append(t);
+      if (rows.length > top) {
+        const more = h("button", "btn ghost lk-more", showAll ? "Show fewer" : `Show all ${rows.length}`);
+        more.type = "button";
+        more.addEventListener("click", () => { showAll = !showAll; draw(); });
+        wrap.append(more);
+      }
+    };
+    draw();
     return wrap;
   }
 

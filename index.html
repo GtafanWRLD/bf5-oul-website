@@ -600,15 +600,30 @@
   .lk-status.online::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: #a8d27e; }
   .lk-links { display: flex; flex-direction: column; gap: 6px; align-self: flex-start; }
   .lk-links .btn { justify-content: center; text-decoration: none; white-space: nowrap; }
-  .lk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-  .lk-tile { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: var(--radius-m); background: var(--surface-1); box-shadow: var(--shadow-1); }
-  .lk-tile-v { font: 700 24px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
-  .lk-tile-l { color: var(--muted); font-size: 12.5px; }
-  .lk-table table { margin-top: 4px; }
-  .lk-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 0 8px 8px 0; }
-  .lk-table td { padding: 6px 8px 6px 0; vertical-align: middle; }
-  .lk-table td:not(:first-child), .lk-table th:not(:first-child) { text-align: right; }
-  .lk-item { display: flex; align-items: center; gap: 10px; }
+  .lk-card { padding: 16px; border-radius: var(--radius-l); background: var(--surface-1); box-shadow: var(--shadow-1); min-width: 0; }
+  .lk-body { display: grid; grid-template-columns: minmax(260px, 320px) 1fr; gap: 16px; align-items: start; }
+  .lk-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .lk-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .lk-hero-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: var(--radius-m); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+  .lk-hero-l { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .lk-hero-v { color: var(--accent); font: 700 30px/1.05 var(--font-display); font-variant-numeric: tabular-nums; }
+  .lk-group-title { margin: 18px 0 6px; color: var(--muted); font: 600 12px var(--font); letter-spacing: .06em; text-transform: uppercase; }
+  .lk-list { display: grid; grid-template-columns: 1fr auto; margin: 0; }
+  .lk-list dt, .lk-list dd { padding: 7px 0; box-shadow: 0 1px 0 var(--line); }
+  .lk-list dt { color: var(--muted); }
+  .lk-list dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .lk-table-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .lk-table-head h3 { margin: 0; }
+  .lk-count { color: var(--muted); font-size: 13px; }
+  .lk-table table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .lk-table th { text-align: left; padding: 0 0 6px; color: var(--muted); font-weight: 500; }
+  .lk-table td { padding: 8px 0; box-shadow: 0 -1px 0 var(--line); vertical-align: middle; }
+  .lk-table td:not(:first-child), .lk-table th:not(:first-child) { text-align: right; padding-left: 12px; }
+  .lk-table td.on { color: var(--accent); font-weight: 600; }
+  .lk-sort { padding: 4px 0; border: 0; background: none; color: var(--muted); font: 600 12px var(--font); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+  .lk-sort:hover, .lk-sort.on { color: var(--text); }
+  .lk-more { margin-top: 10px; width: 100%; justify-content: center; }
+  .lk-item { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .lk-thumb { width: 72px; height: 36px; object-fit: contain; flex: 0 0 72px; }
   .lk-item-text { display: flex; flex-direction: column; min-width: 0; }
   .lk-item-name { font-weight: 600; }
@@ -616,6 +631,7 @@
   .lk-note { margin: 0; color: var(--muted); font-size: 12.5px; }
   @media (max-width: 640px) {
     .lk-head { flex-wrap: wrap; }
+    .lk-body { grid-template-columns: 1fr; }
     .lk-links { flex-direction: row; flex-wrap: wrap; align-self: stretch; }
     .lk-thumb { display: none; }
     .lk-table th:nth-child(4), .lk-table td:nth-child(4), .lk-table th:nth-child(5), .lk-table td:nth-child(5) { display: none; }
@@ -833,15 +849,15 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="catalog.js?v=202610170400"></script>
-<script src="weapon-stats.js?v=202610170400"></script>
-<script src="gun-stats.js?v=202610170400"></script>
-<script src="vehicle-specs.js?v=202610170400"></script>
-<script src="vehicle-upgrades.js?v=202610170400"></script>
-<script src="sensitivity.js?v=202610170400"></script>
-<script src="loadouts.js?v=202610170400"></script>
-<script src="randomizer.js?v=202610170400"></script>
-<script src="lookup.js?v=202610170400"></script>
+<script src="catalog.js?v=202610170520"></script>
+<script src="weapon-stats.js?v=202610170520"></script>
+<script src="gun-stats.js?v=202610170520"></script>
+<script src="vehicle-specs.js?v=202610170520"></script>
+<script src="vehicle-upgrades.js?v=202610170520"></script>
+<script src="sensitivity.js?v=202610170520"></script>
+<script src="loadouts.js?v=202610170520"></script>
+<script src="randomizer.js?v=202610170520"></script>
+<script src="lookup.js?v=202610170520"></script>
 <script>
 "use strict";
 
