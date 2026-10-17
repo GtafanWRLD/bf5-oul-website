@@ -622,7 +622,30 @@
   .lk-table td.on { color: var(--accent); font-weight: 600; }
   .lk-sort { padding: 4px 0; border: 0; background: none; color: var(--muted); font: 600 12px var(--font); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
   .lk-sort:hover, .lk-sort.on { color: var(--text); }
-  .lk-search .btn[aria-pressed="true"] { color: var(--accent); }
+  #lookup { --pa: #f0a73a; --pb: #6cb6ff; }
+  .lk-mode { width: fit-content; margin-bottom: 10px; }
+  .lk-search.two { align-items: center; }
+  .lk-search.two .lk-in-a { box-shadow: inset 3px 0 0 var(--pa); }
+  .lk-search.two .lk-in-b { box-shadow: inset 3px 0 0 var(--pb); }
+  .lk-search .lk-in-b { flex: 1; min-width: 0; }
+  .lk-vs { color: var(--muted); font: 700 16px var(--font-display); text-transform: uppercase; }
+  .lk-fresh { display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .lk-refresh { padding: 3px 9px; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--text); font: 600 12px var(--font); cursor: pointer; }
+  .lk-refresh:hover:not(:disabled) { background: var(--surface-3); }
+  .lk-refresh:disabled { opacity: .5; cursor: default; }
+  .lk-compare-top { display: flex; justify-content: flex-end; }
+  .lk-compare .p0 .lk-vs-name span, .lk-compare td.p0:not(.win) { color: var(--pa); }
+  .lk-compare .p1 .lk-vs-name span, .lk-compare td.p1:not(.win) { color: var(--pb); }
+  .lk-compare .p0 .lk-vs-avatar { box-shadow: 0 0 0 2px var(--pa); }
+  .lk-compare .p1 .lk-vs-avatar { box-shadow: 0 0 0 2px var(--pb); }
+  .lk-compare td.win::after { content: " ▲"; font-size: 10px; }
+  .lk-legend { display: flex; gap: 12px; margin-left: auto; font-size: 13px; font-weight: 600; }
+  .lk-legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; background: currentColor; }
+  .lk-legend .p0, .lk-pair .p0 { color: var(--pa); }
+  .lk-legend .p1, .lk-pair .p1 { color: var(--pb); }
+  .lk-pair span { display: block; line-height: 1.35; opacity: .8; }
+  .lk-pair span.best { opacity: 1; font-weight: 700; }
+  .lk-pair span.best::after { content: " ▲"; font-size: 9px; }
   .lk-compare table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14.5px; font-variant-numeric: tabular-nums; table-layout: fixed; }
   .lk-compare th, .lk-compare td { padding: 9px 10px; box-shadow: 0 -1px 0 var(--line); text-align: center; }
   .lk-compare thead th { box-shadow: none; padding-bottom: 12px; }
@@ -649,6 +672,7 @@
     .lk-thumb { display: none; }
     .lk-table:not(.lk-shared) th:nth-child(4), .lk-table:not(.lk-shared) td:nth-child(4), .lk-table:not(.lk-shared) th:nth-child(5), .lk-table:not(.lk-shared) td:nth-child(5) { display: none; }
     .lk-shared .lk-thumb { display: none; }
+    .lk-shared th:nth-child(5), .lk-shared td:nth-child(5), .lk-shared th:nth-child(6), .lk-shared td:nth-child(6) { display: none; }
     .lk-shared table { font-size: 13px; }
     .lk-shared td:not(:first-child), .lk-shared th:not(:first-child) { padding-left: 6px; }
     .lk-shared .lk-scroll { padding-right: 6px; }
@@ -866,15 +890,15 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="catalog.js?v=202610170640"></script>
-<script src="weapon-stats.js?v=202610170640"></script>
-<script src="gun-stats.js?v=202610170640"></script>
-<script src="vehicle-specs.js?v=202610170640"></script>
-<script src="vehicle-upgrades.js?v=202610170640"></script>
-<script src="sensitivity.js?v=202610170640"></script>
-<script src="loadouts.js?v=202610170640"></script>
-<script src="randomizer.js?v=202610170640"></script>
-<script src="lookup.js?v=202610170640"></script>
+<script src="catalog.js?v=202610170720"></script>
+<script src="weapon-stats.js?v=202610170720"></script>
+<script src="gun-stats.js?v=202610170720"></script>
+<script src="vehicle-specs.js?v=202610170720"></script>
+<script src="vehicle-upgrades.js?v=202610170720"></script>
+<script src="sensitivity.js?v=202610170720"></script>
+<script src="loadouts.js?v=202610170720"></script>
+<script src="randomizer.js?v=202610170720"></script>
+<script src="lookup.js?v=202610170720"></script>
 <script>
 "use strict";
 

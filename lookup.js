@@ -11,8 +11,11 @@
  * snapshot made by tools/build-bot-history.mjs, is used and online status comes from our own scan.
  * Country isn't available for BFV from any source.
  *
- * "Compare" puts two players side by side: headline stats with the better value marked, and the
- * weapons both of them use.
+ * "Compare two" puts two players side by side: headline stats with the better value marked, and
+ * the weapons both of them use.
+ *
+ * Players looked up before are kept in this browser (bfv-lookup-cache), so they open instantly;
+ * fresh stats load in the background and replace them when they arrive.
  */
 window.PlayerLookup = (() => {
   /** The bot's gist (owner = the GitHub account its token belongs to). Empty id = not set up yet. */
@@ -73,6 +76,67 @@ window.PlayerLookup = (() => {
   /** Bumped on every lookup so a slow older one doesn't draw over a newer one. */
   let run = 0;
 
+  // ---------- browser cache ----------
+  const CACHE_KEY = "bfv-lookup-cache";
+  const CACHE_MAX = 30;
+  /** names: "n:<lowercase name>" → who; players: id → { at, s (trimmed stats), games }. */
+  const cache = (() => {
+    try {
+      const c = JSON.parse(localStorage.getItem(CACHE_KEY));
+      if (c?.names && c?.players) return c;
+    } catch {}
+    return { names: {}, players: {} };
+  })();
+  const nameKey = (name) => `n:${name.toLowerCase()}`;
+  function saveCache() {
+    const ids = Object.keys(cache.players).sort((a, b) => cache.players[b].at - cache.players[a].at);
+    for (const id of ids.slice(CACHE_MAX)) delete cache.players[id];
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch {}
+  }
+  /** Only what the page shows, so 30 players fit easily in local storage. */
+  const trim = (s) => ({
+    ...Object.fromEntries(Object.entries(s).filter(([, v]) => v === null || typeof v !== "object")),
+    weapons: (s.weapons || []).filter((w) => w.kills > 0).map(({ weaponName, type, image, kills, killsPerMinute, accuracy, headshots, timeEquipped }) =>
+      ({ weaponName, type, image, kills, killsPerMinute, accuracy, headshots, timeEquipped })),
+    vehicles: (s.vehicles || []).filter((v) => v.kills > 0).map(({ vehicleName, type, image, kills, killsPerMinute, destroyed, timeIn }) =>
+      ({ vehicleName, type, image, kills, killsPerMinute, destroyed, timeIn })),
+    platoons: (s.platoons || []).map(({ id, tag, name }) => ({ id, tag, name })),
+    activePlatoon: s.activePlatoon ? { id: s.activePlatoon.id } : null,
+  });
+  /** Fresh stats (and owned games) from gametools, saved to the cache. Null if gametools fails. */
+  async function fetchPlayer(who) {
+    const [stats, games] = await Promise.all([
+      api("/bfv/all/", { playerid: who.id, platform: "pc", skip_battlelog: true, format_values: false }, 30000).catch(() => null),
+      api("/bfglobal/games/", { playerid: who.id, platform: "pc" }, 15000).catch(() => null),
+    ]);
+    if (!stats) return null;
+    const entry = { at: Date.now(), s: trim(stats), games: games && Object.fromEntries(GAMES.map(([k]) => [k, Boolean(games[k])])) };
+    cache.players[who.id] = entry;
+    saveCache();
+    return entry;
+  }
+  /** Name → who, from the cache when we've seen the name before. */
+  async function whoIs(name, hist, force) {
+    const hit = !force && cache.names[nameKey(name)];
+    if (hit) return hit;
+    const who = await resolveAny(name, hist);
+    cache.names[nameKey(name)] = cache.names[nameKey(who.name)] = who;
+    return who;
+  }
+  const sameStats = (a, b) => JSON.stringify(a?.s) === JSON.stringify(b?.s);
+  /** The bot's history once loaded (null until then); renders use whatever is there. */
+  let historyData = null;
+  const ageText = (ms) => ago(ms / 1000);
+
+  /** Shows a new profile/comparison, keeping the online status line the old one had. */
+  function swap(box, animate) {
+    const before = els.out.querySelector('[data-out="status"]');
+    const after = box.querySelector('[data-out="status"]');
+    if (before && after) { after.className = before.className; after.textContent = before.textContent; after.title = before.title; }
+    if (!animate) box.classList.remove("enter");
+    els.out.replaceChildren(box);
+  }
+
   function render(container, p, cb) {
     root = container;
     prefs = p;
@@ -85,32 +149,46 @@ window.PlayerLookup = (() => {
   function build() {
     root.dataset.built = "1";
     root.innerHTML = `
+      <div class="gs-seg lk-mode" role="group" aria-label="Mode">
+        <button type="button" data-mode="one">One player</button>
+        <button type="button" data-mode="two">Compare two</button>
+      </div>
       <form class="lk-search" role="search">
-        <input class="field" name="q" placeholder="EA / Origin name (PC)" autocomplete="off" spellcheck="false" aria-label="Player name">
-        <input class="field" name="vs" placeholder="Compare with…" autocomplete="off" spellcheck="false" aria-label="Second player name" hidden>
+        <input class="field lk-in-a" name="q" placeholder="EA / Origin name (PC)" autocomplete="off" spellcheck="false" aria-label="Player name">
+        <span class="lk-vs" hidden>vs</span>
+        <input class="field lk-in-b" name="vs" placeholder="Second player" autocomplete="off" spellcheck="false" aria-label="Second player name" hidden>
         <button class="btn primary" type="submit">Look up</button>
-        <button class="btn ghost" type="button" data-act="compare" aria-pressed="false">Compare</button>
       </form>
       <div class="lk-recent"></div>
       <div class="lk-out"></div>`;
-    els = { form: root.querySelector("form"), recent: root.querySelector(".lk-recent"), out: root.querySelector(".lk-out") };
-    const toggle = els.form.querySelector('[data-act="compare"]');
-    const setCompare = (on) => {
-      els.form.vs.hidden = !on;
-      toggle.setAttribute("aria-pressed", String(on));
-      els.form.querySelector('[type="submit"]').textContent = on ? "Compare" : "Look up";
-      toggle.textContent = on ? "Cancel" : "Compare";
-      if (on) els.form.vs.focus();
-    };
-    toggle.addEventListener("click", () => setCompare(els.form.vs.hidden));
+    els = { form: root.querySelector("form"), recent: root.querySelector(".lk-recent"), out: root.querySelector(".lk-out"), mode: root.querySelector(".lk-mode") };
+    els.mode.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-mode]");
+      if (b) setMode(b.dataset.mode, true);
+    });
     els.form.addEventListener("submit", (e) => {
       e.preventDefault();
       const q = els.form.q.value.trim();
       const vs = els.form.vs.value.trim();
-      if (q && vs && !els.form.vs.hidden) compare(q, vs);
+      if (prefs.mode === "two" && q && vs) compare(q, vs);
+      else if (prefs.mode === "two") (q ? els.form.vs : els.form.q).focus();
       else if (q) lookup(q);
     });
+    setMode(prefs.mode || "one");
     if (prefs.last) lookup(prefs.last, false);
+  }
+
+  function setMode(mode, focus = false) {
+    prefs.mode = mode;
+    onChange?.();
+    const two = mode === "two";
+    for (const b of els.mode.children) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+    els.form.classList.toggle("two", two);
+    els.form.vs.hidden = !two;
+    els.form.querySelector(".lk-vs").hidden = !two;
+    els.form.q.placeholder = two ? "First player" : "EA / Origin name (PC)";
+    els.form.querySelector('[type="submit"]').textContent = two ? "Compare" : "Look up";
+    if (focus) (two && els.form.q.value ? els.form.vs : els.form.q).focus();
   }
 
   function drawRecent() {
@@ -118,7 +196,7 @@ window.PlayerLookup = (() => {
     for (const name of prefs.recent) {
       const b = h("button", "lk-chip", name);
       b.type = "button";
-      b.addEventListener("click", () => lookup(name));
+      b.addEventListener("click", () => { setMode("one"); lookup(name); });
       els.recent.append(b);
     }
   }
@@ -147,21 +225,18 @@ window.PlayerLookup = (() => {
 
   const message = (text) => { els.out.innerHTML = ""; els.out.append(h("p", "gs-empty", text)); };
 
-  async function lookup(name, remember = true) {
+  async function lookup(name, remember = true, force = false) {
     const me = ++run;
     els.form.q.value = name;
-    message(`Looking up ${name}…`);
-    let who;
     const hist = loadHistory();
-    try { who = await resolveAny(name, hist); } catch (err) {
+    let who;
+    try {
+      if (!cache.names[nameKey(name)] || force) message(`Looking up ${name}…`);
+      who = await whoIs(name, hist, force);
+    } catch (err) {
       if (me === run) message(`No PC player named "${name}" (${err.message}).`);
       return;
     }
-    const [stats, games, history] = await Promise.all([
-      api("/bfv/all/", { playerid: who.id, platform: "pc", skip_battlelog: true, format_values: false }, 30000).catch(() => null),
-      api("/bfglobal/games/", { playerid: who.id, platform: "pc" }, 15000).catch(() => null),
-      hist,
-    ]);
     if (me !== run) return;
     if (remember) {
       prefs.last = who.name;
@@ -169,27 +244,78 @@ window.PlayerLookup = (() => {
       onChange?.();
       drawRecent();
     }
-    els.out.innerHTML = "";
-    const known = historyOf(history, [who.id, who.userId], who.name);
-    els.out.append(profile(who, stats, games, known, history));
-    findOnline(who, me, known);
+    let entry = force ? null : cache.players[who.id];
+    let updating = true;
+    const draw = (animate) => {
+      if (me !== run) return;
+      const known = historyOf(historyData, [who.id, who.userId], who.name);
+      swap(profile(who, entry, known, historyData, updating), animate);
+    };
+    if (entry) draw(true);
+    else message(`Loading ${who.name}…`);
+    const fresh = fetchPlayer(who);
+    currentKnown = historyOf(historyData, [who.id, who.userId], who.name);
+    findOnline(who, me);
+    if (!historyData) hist.then((data) => {
+      if (me !== run || !data) return;
+      historyData = data;
+      currentKnown = historyOf(data, [who.id, who.userId], who.name);
+      if (entry) draw(false);
+      // The online check may have finished first: add "Last seen" to it.
+      const el = els.out.querySelector('[data-out="status"]');
+      if (el && el.textContent === NOT_ONLINE) el.textContent += lastSeen();
+    });
+    const got = await fresh;
+    if (me !== run) return;
+    updating = false;
+    const shown = Boolean(els.out.querySelector(".lk-profile"));
+    const changed = !entry || !sameStats(entry, got);
+    if (got) entry = got;
+    if (!entry) { message(`Couldn't load ${who.name}'s stats from gametools. Try again in a moment.`); return; }
+    // Same numbers as the saved copy: just update the "Updated…" line, so the tables keep their scroll.
+    if (shown && !changed) els.out.querySelector(".lk-fresh")?.replaceWith(freshness(entry.at, false, () => lookup(who.name, false, true)));
+    else draw(!shown);
   }
 
-  const statsOf = (who) => api("/bfv/all/", { playerid: who.id, platform: "pc", skip_battlelog: true, format_values: false }, 30000).catch(() => null);
-
-  async function compare(a, b) {
+  async function compare(a, b, force = false) {
     const me = ++run;
-    message(`Comparing ${a} and ${b}…`);
+    els.form.q.value = a;
+    els.form.vs.value = b;
     const hist = loadHistory();
-    const people = await Promise.all([a, b].map((name) => resolveAny(name, hist).catch(() => name)));
-    const missing = people.filter((p) => typeof p === "string");
-    if (missing.length) { if (me === run) message(`No PC player named ${missing.map((n) => `"${n}"`).join(" or ")}.`); return; }
-    const stats = await Promise.all(people.map(statsOf));
+    const people = await Promise.all([a, b].map((name) => whoIs(name, hist, force).catch(() => name)));
     if (me !== run) return;
-    const gone = people.filter((p, i) => !stats[i]?.secondsPlayed).map((p) => p.name);
-    if (gone.length) { message(`No BFV stats for ${gone.join(" or ")} (never played, or their stats are private).`); return; }
-    els.out.innerHTML = "";
-    els.out.append(comparison(people, stats));
+    const missing = people.filter((p) => typeof p === "string");
+    if (missing.length) { message(`No PC player named ${missing.map((n) => `"${n}"`).join(" or ")}.`); return; }
+    let entries = people.map((p) => (force ? null : cache.players[p.id]));
+    let updating = true;
+    const draw = (animate) => {
+      if (me !== run) return;
+      const gone = people.filter((p, i) => !entries[i]?.s.secondsPlayed).map((p) => p.name);
+      if (gone.length) { if (!updating) message(`No BFV stats for ${gone.join(" or ")} (never played, or their stats are private).`); return; }
+      swap(comparison(people, entries, updating, () => compare(a, b, true)), animate);
+    };
+    if (entries.every(Boolean)) draw(true);
+    else message(`Comparing ${people[0].name} and ${people[1].name}…`);
+    const fresh = await Promise.all(people.map(fetchPlayer));
+    if (me !== run) return;
+    updating = false;
+    const shown = Boolean(els.out.querySelector(".lk-compare"));
+    const changed = entries.some((e, i) => !e || !sameStats(e, fresh[i]));
+    entries = entries.map((e, i) => fresh[i] || e);
+    if (shown && !changed) els.out.querySelector(".lk-fresh")?.replaceWith(freshness(Math.min(...entries.map((e) => e.at)), false, () => compare(a, b, true)));
+    else draw(!shown);
+  }
+
+  /** "Saved 5 min ago · updating…" plus a Refresh button. */
+  function freshness(at, updating, refresh) {
+    const row = h("div", "lk-fresh");
+    row.append(h("span", "", updating ? (at ? `Saved data from ${ageText(at)} · updating…` : "Loading…") : `Updated ${ageText(at)}`));
+    const b = h("button", "lk-refresh", "Refresh");
+    b.type = "button";
+    b.disabled = updating;
+    b.addEventListener("click", refresh);
+    row.append(b);
+    return row;
   }
 
   /** [label, value, format, which is better: 1 higher, -1 lower, 0 neither]. */
@@ -214,14 +340,18 @@ window.PlayerLookup = (() => {
     ["Best class", (s) => s.bestClass, (v) => v || "—", 0],
   ];
 
-  function comparison(people, stats) {
+  function comparison(people, entries, updating, refresh) {
+    const stats = entries.map((e) => e.s);
     const box = h("div", "lk-profile enter");
+    const top = h("div", "lk-compare-top");
+    top.append(freshness(Math.min(...entries.map((e) => e.at)), updating, refresh));
+    box.append(top);
     const card = h("div", "lk-card lk-compare");
     const t = h("table", "");
     const head = h("tr");
     head.append(h("th", "", ""));
     people.forEach((p, i) => {
-      const th = h("th", "lk-vs-player");
+      const th = h("th", `lk-vs-player p${i}`);
       const b = h("button", "lk-vs-name");
       b.type = "button";
       b.title = `Open ${p.name}'s profile`;
@@ -230,7 +360,7 @@ window.PlayerLookup = (() => {
       av.alt = "";
       av.onerror = () => av.remove();
       b.append(av, h("span", "", p.name));
-      b.addEventListener("click", () => lookup(p.name));
+      b.addEventListener("click", () => { setMode("one"); lookup(p.name); });
       th.append(b);
       head.append(th);
     });
@@ -243,14 +373,15 @@ window.PlayerLookup = (() => {
       r.append(h("th", "", label));
       const best = better && vals.every((v) => typeof v === "number") && vals[0] !== vals[1]
         ? (better > 0 ? Math.max(...vals) : Math.min(...vals)) : null;
-      vals.forEach((v) => r.append(h("td", v === best ? "win" : "", fmt(v))));
+      vals.forEach((v, i) => r.append(h("td", `p${i}${v === best ? " win" : ""}`, fmt(v))));
       tbody.append(r);
     }
     t.append(thead, tbody);
     card.append(t);
     box.append(card);
 
-    // Weapons both have kills with, most kills combined first.
+    // Weapons both have kills with, most kills combined first. Each cell stacks both players'
+    // values in their colour; ▲ marks the better one.
     const byName = stats.map((s) => new Map((s.weapons || []).filter((w) => w.kills > 0).map((w) => [w.weaponName, w])));
     const shared = [...byName[0].keys()].filter((n) => byName[1].has(n))
       .map((n) => [byName[0].get(n), byName[1].get(n)])
@@ -259,17 +390,23 @@ window.PlayerLookup = (() => {
       const wcard = h("div", "lk-card lk-table lk-shared");
       const wh = h("div", "lk-table-head");
       wh.append(h("h3", "", "Weapons you both use"), h("span", "lk-count", String(shared.length)));
+      const legend = h("span", "lk-legend");
+      people.forEach((p, i) => legend.append(h("span", `p${i}`, p.name)));
+      wh.append(legend);
       wcard.append(wh);
+      const cols = [
+        ["Kills", (w) => w.kills, (v) => num(v), 0],
+        ["KPM", (w) => w.killsPerMinute, (v) => num(v, 2), 1],
+        ["Accuracy", (w) => w.accuracy, (v) => `${num(v, 1)}%`, 1],
+        ["Headshots", (w) => w.headshots, (v) => `${num(v, 1)}%`, 1],
+        ["Time", (w) => w.timeEquipped, hours, 0],
+      ];
       const wt = h("table", "");
-      // Player names over their Kills / KPM pair.
-      const names = h("tr", "lk-vs-names");
-      names.append(h("th", "", ""));
-      for (const p of people) { const th = h("th", "", p.name); th.colSpan = 2; names.append(th); }
       const tr = h("tr");
       tr.append(h("th", "", "Weapon"));
-      for (let i = 0; i < people.length; i++) tr.append(h("th", "", "Kills"), h("th", "", "KPM"));
+      for (const [label] of cols) tr.append(h("th", "", label));
       const wthead = h("thead");
-      wthead.append(names, tr);
+      wthead.append(tr);
       const wbody = h("tbody");
       for (const pair of shared) {
         const r = h("tr");
@@ -281,25 +418,28 @@ window.PlayerLookup = (() => {
         cell.append(txt);
         first.append(cell);
         r.append(first);
-        const kpmBest = Math.max(pair[0].killsPerMinute, pair[1].killsPerMinute);
-        for (const w of pair) {
-          r.append(h("td", "", num(w.kills)));
-          r.append(h("td", pair[0].killsPerMinute !== pair[1].killsPerMinute && w.killsPerMinute === kpmBest ? "win" : "", num(w.killsPerMinute, 2)));
+        for (const [, get, fmt, better] of cols) {
+          const vals = pair.map(get);
+          const best = better && vals[0] !== vals[1] ? Math.max(...vals) : null;
+          const td = h("td", "lk-pair");
+          vals.forEach((v, i) => td.append(h("span", `p${i}${v === best ? " best" : ""}`, fmt(v))));
+          r.append(td);
         }
         wbody.append(r);
       }
       wt.append(wthead, wbody);
       const scroll = h("div", "lk-scroll");
-      scroll.style.maxHeight = `${36 + 10 * 53}px`;
+      scroll.style.maxHeight = `${40 + 9 * 60}px`;
       scroll.append(wt);
       wcard.append(scroll);
       box.append(wcard);
     }
-    box.append(h("p", "lk-note", "Green marks the better value. Click a name to open that player's full profile."));
+    box.append(h("p", "lk-note", "Green marks the better value in the stats; ▲ the better one per weapon. Click a name to open that player's full profile."));
     return box;
   }
 
-  function profile(who, s, games, known, history) {
+  function profile(who, entry, known, history, updating) {
+    const { s, games } = entry;
     const box = h("div", "lk-profile enter");
     const head = h("div", "lk-head");
     const av = h("img", "lk-avatar");
@@ -328,7 +468,7 @@ window.PlayerLookup = (() => {
       aka.title = `Names our Discord bot has seen this player use, data until ${history.dataUntil?.slice(0, 10) || "?"}`;
       id.append(aka);
     }
-    const status = h("div", "lk-status", "Checking live servers…");
+    const status = h("div", "lk-status", "Checking who's online…");
     status.dataset.out = "status";
     id.append(status);
     const links = h("div", "lk-links");
@@ -342,6 +482,7 @@ window.PlayerLookup = (() => {
       a.rel = "noopener";
       links.append(a);
     }
+    links.append(freshness(entry.at, updating, () => lookup(who.name, false, true)));
     head.append(av, id, links);
     box.append(head);
 
@@ -460,10 +601,15 @@ window.PlayerLookup = (() => {
     return wrap;
   }
 
+  /** The bot's record for the player on screen, once the history has loaded. */
+  let currentKnown = null;
+  const NOT_ONLINE = "Not on any server right now.";
+  const lastSeen = () => (currentKnown?.rec[1] ? ` Last seen on ${currentKnown.rec[2]}, ${ago(currentKnown.rec[1])}.` : "");
+
   /** Online status: from the bot's last scan when it's recent, else by checking every live server. */
-  async function findOnline(who, me, known) {
+  async function findOnline(who, me) {
     const status = () => (me === run ? els.out.querySelector('[data-out="status"]') : null);
-    const seen = known?.rec[1] ? ` Last seen on ${known.rec[2]}, ${ago(known.rec[1])}.` : "";
+    const known = currentKnown;
     const live = await gistFile("online.json").catch(() => null);
     if (live && Date.now() / 1000 - live.at < LIVE_MAX_AGE) {
       const lower = who.name.toLowerCase();
@@ -474,15 +620,15 @@ window.PlayerLookup = (() => {
       el.className = "lk-status" + (hit ? " online" : "");
       el.textContent = hit
         ? `Playing now: ${hit[1]} · ${hit[3]}, ${hit[4]} · ${hit[5]}`
-        : `Not on any server right now.${seen}`;
+        : NOT_ONLINE + lastSeen();
       el.title = `From our Discord bot's scan ${ago(live.at)}`;
       return;
     }
-    return scanOnline(who, me, seen, status);
+    return scanOnline(who, me, status);
   }
 
   /** Looks for the player in every live server's player list; stops at the first match. */
-  async function scanOnline(who, me, seen, status) {
+  async function scanOnline(who, me, status) {
     let found = null, checked = 0;
     try {
       const { servers } = await api("/bfv/servers/", { name: "", platform: "pc", limit: 250, region: "all" }, 30000);
@@ -505,7 +651,7 @@ window.PlayerLookup = (() => {
       el.className = "lk-status" + (found ? " online" : "");
       el.textContent = found
         ? `Playing now: ${found.prefix} · ${found.currentMap}, ${found.mode} · ${found.serverInfo}`
-        : `Not on any server right now.${seen}`;
+        : NOT_ONLINE + lastSeen();
     } catch {
       const el = status();
       if (el) el.textContent = "Couldn't check the live servers.";
