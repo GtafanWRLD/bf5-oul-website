@@ -311,10 +311,12 @@
   body:not([data-tab="veh"]) .veh-only { display: none !important; }
   body:not([data-tab="sens"]) .sens-only { display: none !important; }
   body:not([data-tab="rand"]) .rand-only { display: none !important; }
+  body:not([data-tab="lookup"]) .lookup-only { display: none !important; }
   body[data-tab="stats"] .board-area, body[data-tab="stats"] .tiers-only,
   body[data-tab="veh"] .board-area, body[data-tab="veh"] .tiers-only,
   body[data-tab="sens"] .board-area, body[data-tab="sens"] .tiers-only,
-  body[data-tab="rand"] .board-area, body[data-tab="rand"] .tiers-only { display: none !important; }
+  body[data-tab="rand"] .board-area, body[data-tab="rand"] .tiers-only,
+  body[data-tab="lookup"] .board-area, body[data-tab="lookup"] .tiers-only { display: none !important; }
 
   /* Players / Weapons / Vehicles / Maps under the Tier lists tab. */
   .subtabs {
@@ -570,6 +572,53 @@
   @media (max-width: 520px) { .fov-rows { grid-template-columns: 1fr; gap: 6px; } }
   @media (max-width: 800px) { .sens-layout { grid-template-columns: 1fr; } }
 
+  /* Player lookup */
+  #lookup { max-width: 1080px; margin: 0 auto; }
+  .lk-search { display: flex; gap: 8px; }
+  .lk-search .field { flex: 1; min-width: 0; }
+  .lk-recent { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .lk-chip { padding: 4px 10px; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--muted); font: 600 13px var(--font); cursor: pointer; }
+  .lk-chip:hover { color: var(--text); background: var(--surface-3); }
+  .lk-profile { margin-top: 18px; display: flex; flex-direction: column; gap: 16px; }
+  .lk-profile.enter { animation: rand-in var(--duration-fast) var(--ease-smooth-out); }
+  @media (prefers-reduced-motion: reduce) { .lk-profile.enter { animation: none; } }
+  .lk-head { display: flex; align-items: center; gap: 18px; padding: 18px; border-radius: var(--radius-l); background: var(--surface-1); box-shadow: var(--shadow-1); }
+  .lk-avatar { width: 88px; height: 88px; border-radius: var(--radius-m); object-fit: cover; flex: 0 0 88px; }
+  .lk-id { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+  .lk-name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .lk-name { margin: 0; font: 700 32px/1 var(--font-display); letter-spacing: .02em; overflow-wrap: anywhere; }
+  .lk-rank { width: 30px; height: 30px; }
+  .lk-rank-n { color: var(--muted); font-weight: 600; }
+  .lk-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .lk-tag { color: var(--muted); font-weight: 600; }
+  .lk-tag.active { color: var(--accent); }
+  .lk-games { color: var(--muted); font-size: 13px; }
+  .lk-status { color: var(--muted); font-size: 13.5px; }
+  .lk-status.online { color: #a8d27e; font-weight: 600; }
+  .lk-status.online::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: #a8d27e; }
+  .lk-links { display: flex; flex-direction: column; gap: 6px; align-self: flex-start; }
+  .lk-links .btn { justify-content: center; text-decoration: none; white-space: nowrap; }
+  .lk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .lk-tile { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: var(--radius-m); background: var(--surface-1); box-shadow: var(--shadow-1); }
+  .lk-tile-v { font: 700 24px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+  .lk-tile-l { color: var(--muted); font-size: 12.5px; }
+  .lk-table table { margin-top: 4px; }
+  .lk-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 0 8px 8px 0; }
+  .lk-table td { padding: 6px 8px 6px 0; vertical-align: middle; }
+  .lk-table td:not(:first-child), .lk-table th:not(:first-child) { text-align: right; }
+  .lk-item { display: flex; align-items: center; gap: 10px; }
+  .lk-thumb { width: 72px; height: 36px; object-fit: contain; flex: 0 0 72px; }
+  .lk-item-text { display: flex; flex-direction: column; min-width: 0; }
+  .lk-item-name { font-weight: 600; }
+  .lk-item-type { color: var(--muted); font-size: 12px; }
+  .lk-note { margin: 0; color: var(--muted); font-size: 12.5px; }
+  @media (max-width: 640px) {
+    .lk-head { flex-wrap: wrap; }
+    .lk-links { flex-direction: row; flex-wrap: wrap; align-self: stretch; }
+    .lk-thumb { display: none; }
+    .lk-table th:nth-child(4), .lk-table td:nth-child(4), .lk-table th:nth-child(5), .lk-table td:nth-child(5) { display: none; }
+  }
+
   /* Loadout randomizer */
   #randomizer { max-width: 980px; margin: 0 auto; }
   #randomizer .gs-toolbar { justify-content: space-between; }
@@ -699,6 +748,7 @@
       <button data-top="veh">Vehicle upgrades</button>
       <button data-top="sens">Sensitivity &amp; FOV</button>
       <button data-top="rand">Randomizer</button>
+      <button data-top="lookup">Player lookup</button>
       <span class="tab-indicator" aria-hidden="true"></span>
     </nav>
   </div>
@@ -757,6 +807,7 @@
 
   <section id="gunStats" class="stats-only" aria-label="Gun stats"></section>
   <section id="vehUpgrades" class="veh-only" aria-label="Vehicle upgrades"></section>
+  <section id="lookup" class="lookup-only" aria-label="Player lookup"></section>
   <section id="randomizer" class="rand-only" aria-label="Loadout randomizer"></section>
   <section id="sensCalc" class="sens-only" aria-label="Sensitivity and FOV calculators"></section>
 
@@ -780,14 +831,15 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="catalog.js?v=202610160550"></script>
-<script src="weapon-stats.js?v=202610160550"></script>
-<script src="gun-stats.js?v=202610160550"></script>
-<script src="vehicle-specs.js?v=202610160550"></script>
-<script src="vehicle-upgrades.js?v=202610160550"></script>
-<script src="sensitivity.js?v=202610160550"></script>
-<script src="loadouts.js?v=202610160550"></script>
-<script src="randomizer.js?v=202610160550"></script>
+<script src="catalog.js?v=202610170100"></script>
+<script src="weapon-stats.js?v=202610170100"></script>
+<script src="gun-stats.js?v=202610170100"></script>
+<script src="vehicle-specs.js?v=202610170100"></script>
+<script src="vehicle-upgrades.js?v=202610170100"></script>
+<script src="sensitivity.js?v=202610170100"></script>
+<script src="loadouts.js?v=202610170100"></script>
+<script src="randomizer.js?v=202610170100"></script>
+<script src="lookup.js?v=202610170100"></script>
 <script>
 "use strict";
 
@@ -903,6 +955,8 @@ const freshState = () => ({
   sensitivity: {},
   /** Randomizer tab: picked class and the last rolled loadout. */
   randomizer: {},
+  /** Player lookup tab: last looked-up name and recent searches. */
+  lookup: {},
 });
 
 /** Fills in anything a saved state is missing (e.g. a tab added after it was saved). */
@@ -916,6 +970,7 @@ function normalize(s) {
   s.vehicleUpgrades ||= {};
   s.sensitivity ||= {};
   s.randomizer ||= {};
+  s.lookup ||= {};
   s.platoons ||= {};
   s.playerBoards ||= {};
   // The Unknown tier is gone: anyone left in it goes back to the top of Unranked.
@@ -993,7 +1048,7 @@ function switchTab(tab) {
 }
 
 /** Top-level tabs that aren't tier lists. */
-const TOOL_TABS = ["stats", "veh", "sens", "rand"];
+const TOOL_TABS = ["stats", "veh", "sens", "rand", "lookup"];
 /** Which top tab a tab belongs to (every tier list sits under "tiers"). */
 const topTab = (tab = state.tab) => (TOOL_TABS.includes(tab) ? tab : "tiers");
 
@@ -1010,6 +1065,7 @@ $("#subtabs").addEventListener("click", (e) => {
 function showTabStatus() {
   if (state.tab === "players") return showCount();
   if (state.tab === "stats") return setStatus(window.GunStats ? GunStats.status() : "Couldn't load the gun stats (gun-stats.js is missing next to index.html).");
+  if (state.tab === "lookup") return setStatus(window.PlayerLookup ? "" : "Couldn't load the player lookup (lookup.js is missing next to index.html).");
   if (state.tab === "rand") return setStatus(window.Randomizer ? "" : "Couldn't load the randomizer (randomizer.js is missing next to index.html).");
   if (state.tab === "sens") return setStatus(window.Sensitivity ? "" : "Couldn't load the calculator (sensitivity.js is missing next to index.html).");
   if (state.tab === "veh") return setStatus(window.VehicleUpgrades ? VehicleUpgrades.status() : "Couldn't load the vehicle upgrades (vehicle-upgrades.js is missing next to index.html).");
@@ -1373,6 +1429,10 @@ function render() {
     window.VehicleUpgrades?.render($("#vehUpgrades"), state.vehicleUpgrades, save);
     return;
   }
+  if (state.tab === "lookup") {
+    window.PlayerLookup?.render($("#lookup"), state.lookup, save);
+    return;
+  }
   if (state.tab === "rand") {
     window.Randomizer?.render($("#randomizer"), state.randomizer, save);
     return;
@@ -1648,6 +1708,7 @@ function openCtx(card, x, y) {
   item(icon("undo"), "Back to Unranked", () => moveTo(id, "pool"));
   if (state.tab === "players") {
     sep();
+    item(icon("external"), "Look up player", () => { switchTab("lookup"); window.PlayerLookup?.show(p?.name || id); });
     item(icon("external"), "Stats on gametools", () => window.open(`https://gametools.network/stats/pc/playerid/${id}?game=bfv`, "_blank", "noopener"));
     item(icon("external"), "Profile on Battlefield Tracker", () => window.open(`https://battlefieldtracker.com/bfv/profile/origin/${encodeURIComponent(p.name)}/overview`, "_blank", "noopener"));
     if (rosterOf(id).manual) item(icon("trash"), "Remove player", () => {
