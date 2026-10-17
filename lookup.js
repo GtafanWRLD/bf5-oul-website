@@ -5,8 +5,9 @@
  * and vehicles, platoons, other BF games) and whether they're on a server right now, found by
  * checking every live server's player list. Uses index.html's global api() and mapLimit().
  *
- * Not available for BFV anywhere public: name history (Battlefield Tracker has it, but its API
- * needs a private key and only allows tracker.gg), country and past servers. Their pages are linked.
+ * Name history and "last seen" come from our Discord bot, which reads every live server every two
+ * minutes: tools/build-bot-history.mjs turns a copy of its store into bot-history.js, loaded only
+ * when this tab is used. Country isn't available for BFV from any source.
  */
 window.PlayerLookup = (() => {
   const GAMES = [["bf3", "BF3"], ["bf4", "BF4"], ["bfh", "Hardline"], ["bf1", "BF1"], ["bfv", "BFV"], ["bf2042", "2042"]];
@@ -21,6 +22,36 @@ window.PlayerLookup = (() => {
   const hours = (s) => `${num(s / 3600)} h`;
 
   let root, prefs, onChange, els;
+
+  /** Loads bot-history.js once (3 MB, so only when someone looks a player up). Null if it's missing. */
+  let historyLoad;
+  const loadHistory = () => (historyLoad ||= new Promise((done) => {
+    if (window.BOT_HISTORY) return done(window.BOT_HISTORY);
+    const tag = document.createElement("script");
+    tag.src = "bot-history.js";
+    tag.onload = () => done(window.BOT_HISTORY || null);
+    tag.onerror = () => done(null);
+    document.head.append(tag);
+  }));
+  /** The bot's record for a player: by id, else by any name they've had (newest sighting wins). */
+  function historyOf(hist, ids, name) {
+    if (!hist) return null;
+    for (const id of ids) if (id && hist.players[id]) return { id, rec: hist.players[id] };
+    const lower = name.toLowerCase();
+    let best = null;
+    for (const [id, rec] of Object.entries(hist.players)) {
+      const hit = rec[0].find((n) => n[0].toLowerCase() === lower);
+      if (hit && (!best || hit[2] > best.at)) best = { id, rec, at: hit[2] };
+    }
+    return best;
+  }
+  const ago = (sec) => {
+    const days = (Date.now() / 1000 - sec) / 86400;
+    if (days < 1 / 24) return "just now";
+    if (days < 1) return `${Math.round(days * 24)} h ago`;
+    if (days < 60) return `${Math.round(days)} days ago`;
+    return new Date(sec * 1000).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+  };
   /** Bumped on every lookup so a slow older one doesn't draw over a newer one. */
   let run = 0;
 
@@ -78,13 +109,23 @@ window.PlayerLookup = (() => {
     els.out.innerHTML = "";
     els.out.append(h("p", "gs-empty", `Looking up ${name}…`));
     let who;
+    const hist = loadHistory();
     try { who = await resolve(name); } catch (err) {
-      if (me === run) { els.out.innerHTML = ""; els.out.append(h("p", "gs-empty", `No PC player named "${name}" (${err.message}).`)); }
-      return;
+      // Maybe an old name: the bot knows which player had it and what they're called now.
+      const old = historyOf(await hist, [], name);
+      const now = old?.rec[0].at(-1)[0];
+      if (now && now.toLowerCase() !== name.toLowerCase()) {
+        try { who = await resolve(now); } catch {}
+      }
+      if (!who) {
+        if (me === run) { els.out.innerHTML = ""; els.out.append(h("p", "gs-empty", `No PC player named "${name}" (${err.message}).`)); }
+        return;
+      }
     }
-    const [stats, games] = await Promise.all([
+    const [stats, games, history] = await Promise.all([
       api("/bfv/all/", { playerid: who.id, platform: "pc", skip_battlelog: true, format_values: false }, 30000).catch(() => null),
       api("/bfglobal/games/", { playerid: who.id, platform: "pc" }, 15000).catch(() => null),
+      hist,
     ]);
     if (me !== run) return;
     if (remember) {
@@ -94,11 +135,12 @@ window.PlayerLookup = (() => {
       drawRecent();
     }
     els.out.innerHTML = "";
-    els.out.append(profile(who, stats, games));
-    findOnline(who, me);
+    const known = historyOf(history, [who.id, who.userId], who.name);
+    els.out.append(profile(who, stats, games, known, history));
+    findOnline(who, me, known);
   }
 
-  function profile(who, s, games) {
+  function profile(who, s, games, known, history) {
     const box = h("div", "lk-profile enter");
     const head = h("div", "lk-head");
     const av = h("img", "lk-avatar");
@@ -120,6 +162,13 @@ window.PlayerLookup = (() => {
     const owned = GAMES.filter(([k]) => games?.[k]);
     if (owned.length) tags.append(h("span", "lk-games", `Owns ${owned.map(([, n]) => n).join(", ")}`));
     id.append(tags);
+    const others = known?.rec[0].filter((n) => n[0].toLowerCase() !== who.name.toLowerCase());
+    if (others?.length) {
+      const aka = h("div", "lk-aka");
+      aka.append(h("span", "lk-aka-l", "Also known as "), document.createTextNode(others.map((n) => `${n[0]} (until ${ago(n[2])})`).join(", ")));
+      aka.title = `Names our Discord bot has seen this player use, data until ${history.dataUntil?.slice(0, 10) || "?"}`;
+      id.append(aka);
+    }
     const status = h("div", "lk-status", "Checking live servers…");
     status.dataset.out = "status";
     id.append(status);
@@ -139,7 +188,7 @@ window.PlayerLookup = (() => {
 
     if (!s || !s.secondsPlayed) {
       box.append(h("p", "gs-empty", s ? "No BFV stats for this player (never played, or their stats are private)." : "Couldn't load BFV stats from gametools."));
-      box.append(h("p", "lk-note", "Name history and country aren't available for BFV from any public source; Battlefield Tracker's page above shows name history."));
+      box.append(note(history));
       return box;
     }
 
@@ -166,9 +215,13 @@ window.PlayerLookup = (() => {
     if (vehicles.length) box.append(table("Top vehicles", ["Vehicle", "Kills", "KPM", "Destroyed", "Time"], vehicles.map((v) => [
       [v.image, v.vehicleName.replace(/\b\w/g, (c) => c.toUpperCase()), v.type], num(v.kills), num(v.killsPerMinute, 2), num(v.destroyed), hours(v.timeIn),
     ])));
-    box.append(h("p", "lk-note", "Name history and country aren't available for BFV from any public source; Battlefield Tracker's page above shows name history."));
+    box.append(note(history));
     return box;
   }
+
+  const note = (history) => h("p", "lk-note", history
+    ? `Name history and last seen come from our Discord bot's server scans (data until ${history.dataUntil?.slice(0, 10) || "?"}). Country isn't available for BFV.`
+    : "Name history and last seen aren't loaded (bot-history.js is missing). Country isn't available for BFV.");
 
   function table(title, cols, rows) {
     const wrap = h("div", "gs-group lk-table");
@@ -196,7 +249,7 @@ window.PlayerLookup = (() => {
   }
 
   /** Looks for the player in every live server's player list; stops at the first match. */
-  async function findOnline(who, me) {
+  async function findOnline(who, me, known) {
     const status = () => (me === run ? els.out.querySelector('[data-out="status"]') : null);
     let found = null, checked = 0;
     try {
@@ -218,9 +271,10 @@ window.PlayerLookup = (() => {
       const el = status();
       if (!el) return;
       el.className = "lk-status" + (found ? " online" : "");
+      const seen = known?.rec[1] ? ` Last seen on ${known.rec[2]}, ${ago(known.rec[1])}.` : "";
       el.textContent = found
         ? `Playing now: ${found.prefix} · ${found.currentMap}, ${found.mode} · ${found.serverInfo}`
-        : `Not on any server right now (checked ${live.length} live servers).`;
+        : `Not on any server right now.${seen}`;
     } catch {
       const el = status();
       if (el) el.textContent = "Couldn't check the live servers.";
