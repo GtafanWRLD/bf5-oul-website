@@ -5,11 +5,23 @@
  * and vehicles, platoons, other BF games) and whether they're on a server right now, found by
  * checking every live server's player list. Uses index.html's global api() and mapLimit().
  *
- * Name history and "last seen" come from our Discord bot, which reads every live server every two
- * minutes: tools/build-bot-history.mjs turns a copy of its store into bot-history.js, loaded only
- * when this tab is used. Country isn't available for BFV from any source.
+ * Name history, "last seen" and who's online come from our Discord bot, which reads every live
+ * server every couple of minutes. With GIST set, the bot's src/publish.ts keeps them in a GitHub
+ * gist (online.json after every scan, history.json every 15 min); otherwise bot-history.js, a
+ * snapshot made by tools/build-bot-history.mjs, is used and online status comes from our own scan.
+ * Country isn't available for BFV from any source.
  */
 window.PlayerLookup = (() => {
+  /** The bot's gist (owner = the GitHub account its token belongs to). Empty id = not set up yet. */
+  const GIST = { owner: "GtafanWRLD", id: "" };
+  /** Raw gist files are cached for up to 5 minutes; a per-minute query skips older copies. */
+  const gistFile = async (name) => {
+    if (!GIST.id) return null;
+    const res = await fetch(`https://gist.githubusercontent.com/${GIST.owner}/${GIST.id}/raw/${name}?t=${Math.floor(Date.now() / 60000)}`);
+    return res.ok ? res.json() : null;
+  };
+  /** Bot online data older than this is ignored (the bot is probably off) and we scan ourselves. */
+  const LIVE_MAX_AGE = 15 * 60;
   const GAMES = [["bf3", "BF3"], ["bf4", "BF4"], ["bfh", "Hardline"], ["bf1", "BF1"], ["bfv", "BFV"], ["bf2042", "2042"]];
 
   const h = (tag, cls, text) => {
@@ -27,12 +39,15 @@ window.PlayerLookup = (() => {
   let historyLoad;
   const loadHistory = () => (historyLoad ||= new Promise((done) => {
     if (window.BOT_HISTORY) return done(window.BOT_HISTORY);
+    gistFile("history.json").catch(() => null).then((live) => (live ? done(live) : snapshot(done)));
+  }));
+  const snapshot = (done) => {
     const tag = document.createElement("script");
     tag.src = "bot-history.js";
     tag.onload = () => done(window.BOT_HISTORY || null);
     tag.onerror = () => done(null);
     document.head.append(tag);
-  }));
+  };
   /** The bot's record for a player: by id, else by any name they've had (newest sighting wins). */
   function historyOf(hist, ids, name) {
     if (!hist) return null;
@@ -248,9 +263,29 @@ window.PlayerLookup = (() => {
     return wrap;
   }
 
-  /** Looks for the player in every live server's player list; stops at the first match. */
+  /** Online status: from the bot's last scan when it's recent, else by checking every live server. */
   async function findOnline(who, me, known) {
     const status = () => (me === run ? els.out.querySelector('[data-out="status"]') : null);
+    const seen = known?.rec[1] ? ` Last seen on ${known.rec[2]}, ${ago(known.rec[1])}.` : "";
+    const live = await gistFile("online.json").catch(() => null);
+    if (live && Date.now() / 1000 - live.at < LIVE_MAX_AGE) {
+      const lower = who.name.toLowerCase();
+      const hit = live.online[who.id] || live.online[who.userId] || (known && live.online[known.id])
+        || Object.values(live.online).find((o) => o[0].toLowerCase() === lower);
+      const el = status();
+      if (!el) return;
+      el.className = "lk-status" + (hit ? " online" : "");
+      el.textContent = hit
+        ? `Playing now: ${hit[1]} · ${hit[3]}, ${hit[4]} · ${hit[5]}`
+        : `Not on any server right now.${seen}`;
+      el.title = `From our Discord bot's scan ${ago(live.at)}`;
+      return;
+    }
+    return scanOnline(who, me, seen, status);
+  }
+
+  /** Looks for the player in every live server's player list; stops at the first match. */
+  async function scanOnline(who, me, seen, status) {
     let found = null, checked = 0;
     try {
       const { servers } = await api("/bfv/servers/", { name: "", platform: "pc", limit: 250, region: "all" }, 30000);
@@ -271,7 +306,6 @@ window.PlayerLookup = (() => {
       const el = status();
       if (!el) return;
       el.className = "lk-status" + (found ? " online" : "");
-      const seen = known?.rec[1] ? ` Last seen on ${known.rec[2]}, ${ago(known.rec[1])}.` : "";
       el.textContent = found
         ? `Playing now: ${found.prefix} · ${found.currentMap}, ${found.mode} · ${found.serverInfo}`
         : `Not on any server right now.${seen}`;
